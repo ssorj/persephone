@@ -69,9 +69,14 @@ echo
 echo "# Testing the broker"
 echo
 
-PATH="$BIN_DIR:$PATH" artemis-service start
+PATH="$BIN_DIR:$PATH" artemis run &
+server_pid=$!
+
+sleep 5
+
 PATH="$BIN_DIR:$PATH" artemis perf client --message-count 1
-PATH="$BIN_DIR:$PATH" artemis-service force-stop
+
+kill $server_pid
 
 echo "  Result: OK"
 echo
