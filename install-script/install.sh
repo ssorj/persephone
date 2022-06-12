@@ -52,6 +52,7 @@ sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
 
 (
+    mkdir -p "$BIN_DIR":
     cd "$BIN_DIR"
 
     ln -sf ../lib/activemq-artemis-instance/bin/artemis

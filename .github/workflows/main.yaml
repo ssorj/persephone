@@ -10,7 +10,5 @@ jobs:
     container: ubuntu:focal
     steps:
     - uses: actions/checkout@v3
-    - run: |
-        apt-get -qq update
-        apt-get -qq install curl sed tar openjdk-11-jdk
+    - run: apt-get -qq install curl sed tar openjdk-11-jdk
     - run: bash --posix install-script/install.sh
