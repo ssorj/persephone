@@ -75,7 +75,7 @@ artemis-service stop > /dev/null
 echo "  Result: OK"
 echo
 
-echo "# The broker is now ready:"
+echo "# The broker is now ready"
 echo
 echo "  Command: artemis run"
 echo
