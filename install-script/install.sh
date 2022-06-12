@@ -59,7 +59,7 @@ sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR
     ln -sf ../lib/activemq-artemis-instance/bin/artemis-service
 )
 
-artemis version | sed 's/^/  /'
+PATH="$BIN_DIR:$PATH" artemis version | sed 's/^/  /'
 
 if [ -e "$BACKUP_DIR" ]; then
     echo "  Backup of previous installation: $BACKUP_DIR"
@@ -69,9 +69,9 @@ echo
 echo "# Testing the broker"
 echo
 
-artemis-service start > /dev/null
-artemis perf client --message-count 1 > /dev/null
-artemis-service stop > /dev/null
+PATH="$BIN_DIR:$PATH" artemis-service start > /dev/null
+PATH="$BIN_DIR:$PATH" artemis perf client --message-count 1 > /dev/null
+PATH="$BIN_DIR:$PATH" artemis-service stop > /dev/null
 
 echo "  Result: OK"
 echo
@@ -80,3 +80,5 @@ echo "# The broker is now ready"
 echo
 echo "  Command: artemis run"
 echo
+
+# XXX Path stuff!
