@@ -71,7 +71,7 @@ echo
 
 PATH="$BIN_DIR:$PATH" artemis-service start
 PATH="$BIN_DIR:$PATH" artemis perf client --message-count 1
-PATH="$BIN_DIR:$PATH" artemis-service stop
+PATH="$BIN_DIR:$PATH" artemis-service force-stop
 
 echo "  Result: OK"
 echo
