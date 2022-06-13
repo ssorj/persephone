@@ -37,21 +37,21 @@ echo
 echo "# Saving any existing installation to a backup location"
 echo
 
-echo "--> Saving the previous dist dir" >> "$LOG_FILE"
+echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
 if [ -e "$LIB_DIR/activemq-artemis" ]; then
     mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
     mv "$LIB_DIR/activemq-artemis" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
-echo "--> Saving the previous instance dir" >> "$LOG_FILE"
+echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 
 if [ -e "$LIB_DIR/activemq-artemis-instance" ]; then
     mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
     mv "$LIB_DIR/activemq-artemis-instance" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
-echo "--> Saving the previous config dir" >> "$LOG_FILE"
+echo "-- Saving the previous config dir" >> "$LOG_FILE"
 
 if [ -e "$CONFIG_DIR/activemq-artemis" ]; then
     mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
@@ -69,24 +69,24 @@ echo
 echo "# Installing ActiveMQ Artemis"
 echo
 
-echo "--> Moving the dist dir to its standard location" >> "$LOG_FILE"
+echo "-- Moving the dist dir to its standard location" >> "$LOG_FILE"
 
 mkdir -p "$LIB_DIR"
 mv "$TEMP_DIR/dist" "$LIB_DIR/activemq-artemis"
 
-echo "--> Creating the broker instance" >> "$LOG_FILE"
+echo "-- Creating the broker instance" >> "$LOG_FILE"
 
 "$LIB_DIR/activemq-artemis/bin/artemis" create "$LIB_DIR/activemq-artemis-instance" \
                                         --user example --password example \
                                         --host localhost --allow-anonymous \
                                         --etc "$CONFIG_DIR/activemq-artemis" >> "$LOG_FILE" 2>&1
 
-echo "--> Burning the instance dir into to the scripts" >> "$LOG_FILE"
+echo "-- Burning the instance dir into to the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
 
-echo "--> Creating symlinks to the scripts" >> "$LOG_FILE"
+echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
 (
     mkdir -p "$BIN_DIR"
@@ -104,13 +104,13 @@ echo
 echo "# Testing the installation"
 echo
 
-echo "--> Testing the artemis command" >> "$LOG_FILE"
+echo "-- Testing the artemis command" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 
 # XXX Check for free ports
 
-echo "--> Testing the server" >> "$LOG_FILE"
+echo "-- Testing the server" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 PATH="$BIN_DIR:$PATH" artemis check node >> "$LOG_FILE" 2>&1
