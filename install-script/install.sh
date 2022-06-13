@@ -1,6 +1,8 @@
 #!/bin/sh
 
-set -e -u -o pipefail || :
+if [ -n "$BASH" ]; then
+    set -Eeuo pipefail
+fi
 
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"
