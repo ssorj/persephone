@@ -6,10 +6,15 @@ BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"
 LIB_DIR="$HOME/.local/lib"
 TEMP_DIR=`mktemp -d`
-BACKUP_DIR="$HOME/activemq-artemis-backup"-`date +%Y-%m-%d`
+BACKUP_DIR="$HOME/activemq-artemis-backup"
+LOG_FILE="$HOME/activemq-artemis-install.log"
 
 if [ -e "$BACKUP_DIR" ]; then
-    mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%s`
+    mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S`
+fi
+
+if [ -e "$LOG_FILE" ]; then
+    mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S`
 fi
 
 echo
@@ -74,7 +79,7 @@ mv "$TEMP_DIR/dist" "$LIB_DIR/activemq-artemis"
 "$LIB_DIR/activemq-artemis/bin/artemis" create "$LIB_DIR/activemq-artemis-instance" \
                                         --user example --password example \
                                         --host localhost --allow-anonymous \
-                                        --etc "$CONFIG_DIR/activemq-artemis" > /dev/null
+                                        --etc "$CONFIG_DIR/activemq-artemis" >> "$LOG_FILE" 2>&1
 
 # Burn the instance location into the scripts
 
@@ -99,20 +104,15 @@ echo
 echo "# Testing the installation"
 echo
 
-PATH="$BIN_DIR:$PATH" artemis-service start
-PATH="$BIN_DIR:$PATH" artemis check node
-# PATH="$BIN_DIR:$PATH" artemis-service stop
+PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
+PATH="$BIN_DIR:$PATH" artemis check node >> "$LOG_FILE" 2>&1
 
-kill `cat "$LIB_DIR/activemq-artemis-instance/data/artemis.pid"`
+# The 'artemis-service stop' command times out too quickly for CI, so
+# I take an alternate approach.
+#
+# PATH="$BIN_DIR:$PATH" artemis-service stop "$LOG_FILE" 2>&1
 
-# PATH="$BIN_DIR:$PATH" artemis run &
-# server_pid=$!
-
-# sleep 5
-
-# PATH="$BIN_DIR:$PATH" artemis perf client --message-count 1
-
-# kill $server_pid
+kill `cat "$LIB_DIR/activemq-artemis-instance/data/artemis.pid"` >> "$LOG_FILE" 2>&1
 
 echo "  Result: OK"
 

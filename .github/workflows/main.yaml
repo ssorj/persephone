@@ -12,5 +12,7 @@ jobs:
     - uses: actions/checkout@v3
     - run: |
         apt-get -qq update
-        apt-get -qq install curl sed tar openjdk-11-jdk
-    - run: bash --posix install-script/install.sh
+        apt-get -qq install curl sed tar openjdk-17-jre-headless
+    - run: |
+        bash --posix install-script/install.sh
+        cat ~/activemq-artemis-install.log
