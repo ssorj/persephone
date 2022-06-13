@@ -101,7 +101,9 @@ echo
 
 PATH="$BIN_DIR:$PATH" artemis-service start
 PATH="$BIN_DIR:$PATH" artemis check node
-PATH="$BIN_DIR:$PATH" artemis-service stop
+# PATH="$BIN_DIR:$PATH" artemis-service stop
+
+kill `cat "$LIB_DIR/activemq-artemis-instance/data/artemis.pid"`
 
 # PATH="$BIN_DIR:$PATH" artemis run &
 # server_pid=$!
