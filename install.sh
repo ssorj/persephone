@@ -131,15 +131,20 @@ echo "-- Testing the server" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 
-for i in `seq 30`; do
-    if PATH="$BIN_DIR:$PATH" artemis-service status >> "$LOG_FILE" 2>&1; then
+for i in `seq 10`; do
+    if PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1; then
         break;
     fi
 
     sleep 1
 done
 
-PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
+if [ "$i" -eq 10 ]; then
+    echo "ERROR: Artemis node check failed" >> "$LOG_FILE"
+    exit 1
+fi
+
+echo $i
 
 # The 'artemis-service stop' command times out too quickly for CI, so
 # I take an alternate approach.
