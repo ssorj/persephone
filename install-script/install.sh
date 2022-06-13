@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -e -u -o pipefail
 
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"
@@ -100,8 +100,6 @@ echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
     ln -sf ../lib/activemq-artemis-instance/bin/artemis-service
 )
 
-# PATH="$BIN_DIR:$PATH" artemis version | sed 's/^/  /'
-
 echo "  Result: OK"
 
 echo
@@ -112,7 +110,15 @@ echo "-- Testing the artemis command" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 
-# XXX Check for free ports
+echo "-- Checking that the required ports are available" >> "$LOG_FILE"
+
+# XXX 5445
+for port in 61616 5672 61613 5445 1883 8161; do
+    if (lsof -PiTCP -sTCP:LISTEN | grep $port); then
+        echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
+        exit 1
+    fi
+done
 
 echo "-- Testing the server" >> "$LOG_FILE"
 
@@ -132,7 +138,7 @@ echo
 echo "# Summary"
 echo
 
-echo "  The broker is now ready.  Use 'artemis run' to start the broker."
+echo "  ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
 echo
 
 # XXX Path stuff!
