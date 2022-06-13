@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -e
-set -o posix
 
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"
@@ -100,9 +99,9 @@ echo
 echo "# Testing the installation"
 echo
 
-PATH="$BIN_DIR:$PATH" artemis-service start > /dev/null
-PATH="$BIN_DIR:$PATH" artemis check node > /dev/null
-PATH="$BIN_DIR:$PATH" artemis-service stop > /dev/null
+PATH="$BIN_DIR:$PATH" artemis-service start
+PATH="$BIN_DIR:$PATH" artemis check node
+PATH="$BIN_DIR:$PATH" artemis-service stop
 
 # PATH="$BIN_DIR:$PATH" artemis run &
 # server_pid=$!
