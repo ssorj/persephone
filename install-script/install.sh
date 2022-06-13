@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e -u -o pipefail
+set -e -u -o pipefail || :
 
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"

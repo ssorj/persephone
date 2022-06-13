@@ -14,7 +14,7 @@ jobs:
         apt-get -qq update
         apt-get -qq install curl grep lsof sed tar openjdk-17-jre-headless
     - run: |
-        bash --posix install-script/install.sh || exit_code=1
+        sh install-script/install.sh || exit_code=1
         echo "# Log"
         echo
         cat ~/activemq-artemis-install.log | sed 's/^/  /'
