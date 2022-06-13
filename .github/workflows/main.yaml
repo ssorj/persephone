@@ -27,7 +27,7 @@ jobs:
         distribution: 'temurin' # See 'Supported distributions' for available options
         java-version: '17'
     - run: |
-        sh install.sh
+        sh install.sh || :
         echo "# Log"
         echo
         cat ~/activemq-artemis-install.log | sed 's/^/  /'
