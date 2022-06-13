@@ -66,7 +66,7 @@ fi
 
 if [ -e "$BACKUP_DIR" ]; then
     echo "  Result: OK"
-    echo "  Backup location: $BACKUP_DIR"
+    echo "  Backup: $BACKUP_DIR"
 else
     echo "  Result: No existing installation"
 fi
@@ -85,9 +85,10 @@ echo "-- Creating the broker instance" >> "$LOG_FILE"
 "$LIB_DIR/activemq-artemis/bin/artemis" create "$LIB_DIR/activemq-artemis-instance" \
                                         --user example --password example \
                                         --host localhost --allow-anonymous \
+                                        --no-hornetq-acceptor \
                                         --etc "$CONFIG_DIR/activemq-artemis" >> "$LOG_FILE" 2>&1
 
-echo "-- Burning the instance dir into to the scripts" >> "$LOG_FILE"
+echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
@@ -114,8 +115,7 @@ PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
-# XXX 5445
-for port in 61616 5672 61613 5445 1883 8161; do
+for port in 61616 5672 61613 1883 8161; do
     if lsof -PiTCP -sTCP:LISTEN | grep $port; then
         echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
         exit 1
