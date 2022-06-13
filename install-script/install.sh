@@ -114,7 +114,7 @@ echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
 # XXX 5445
 for port in 61616 5672 61613 5445 1883 8161; do
-    if (lsof -PiTCP -sTCP:LISTEN | grep $port); then
+    if lsof -PiTCP -sTCP:LISTEN | grep $port; then
         echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
         exit 1
     fi
