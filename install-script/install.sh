@@ -5,6 +5,7 @@ set -e
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config"
 LIB_DIR="$HOME/.local/lib"
+
 TEMP_DIR=`mktemp -d`
 BACKUP_DIR="$HOME/activemq-artemis-backup"
 LOG_FILE="$HOME/activemq-artemis-install.log"
@@ -24,10 +25,13 @@ echo
 (
     cd "$TEMP_DIR"
 
-    curl -fLo dist.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+    echo "-- Fetching the latest dist tarball" >> "$LOG_FILE"
+
+    curl --no-progress-meter -fLo dist.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+
+    echo "-- Extracting files from the tarball " >> "$LOG_FILE"
 
     tar -xf dist.tar.gz >> "$LOG_FILE" 2>&1
-
     mv apache-artemis-2.22.0 dist >> "$LOG_FILE" 2>&1
 )
 
