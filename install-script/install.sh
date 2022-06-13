@@ -10,11 +10,11 @@ BACKUP_DIR="$HOME/activemq-artemis-backup"
 LOG_FILE="$HOME/activemq-artemis-install.log"
 
 if [ -e "$BACKUP_DIR" ]; then
-    mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S`
+    mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
 fi
 
 if [ -e "$LOG_FILE" ]; then
-    mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S`
+    mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
 fi
 
 echo
@@ -24,11 +24,11 @@ echo
 (
     cd "$TEMP_DIR"
 
-    curl -sfLo dist.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download"
+    curl -fLo dist.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
 
-    tar -xf dist.tar.gz
+    tar -xf dist.tar.gz >> "$LOG_FILE" 2>&1
 
-    mv apache-artemis-2.22.0 dist
+    mv apache-artemis-2.22.0 dist >> "$LOG_FILE" 2>&1
 )
 
 echo "  Result: OK"
@@ -37,25 +37,25 @@ echo
 echo "# Saving any existing installation to a backup location"
 echo
 
-# Save the previous dist dir
+echo "--> Saving the previous dist dir" >> "$LOG_FILE"
 
 if [ -e "$LIB_DIR/activemq-artemis" ]; then
-    mkdir -p "$BACKUP_DIR/lib"
-    mv "$LIB_DIR/activemq-artemis" "$BACKUP_DIR/lib"
+    mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+    mv "$LIB_DIR/activemq-artemis" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
-# Save the previous instance dir
+echo "--> Saving the previous instance dir" >> "$LOG_FILE"
 
 if [ -e "$LIB_DIR/activemq-artemis-instance" ]; then
-    mkdir -p "$BACKUP_DIR/lib"
-    mv "$LIB_DIR/activemq-artemis-instance" "$BACKUP_DIR/lib"
+    mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+    mv "$LIB_DIR/activemq-artemis-instance" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
-# Save the previous config dir
+echo "--> Saving the previous config dir" >> "$LOG_FILE"
 
 if [ -e "$CONFIG_DIR/activemq-artemis" ]; then
-    mkdir -p "$BACKUP_DIR/config"
-    mv "$CONFIG_DIR/activemq-artemis" "$BACKUP_DIR/config"
+    mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+    mv "$CONFIG_DIR/activemq-artemis" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
 fi
 
 if [ -e "$BACKUP_DIR" ]; then
@@ -69,24 +69,24 @@ echo
 echo "# Installing ActiveMQ Artemis"
 echo
 
-# Move the dist dir into its standard location
+echo "--> Moving the dist dir to its standard location" >> "$LOG_FILE"
 
 mkdir -p "$LIB_DIR"
 mv "$TEMP_DIR/dist" "$LIB_DIR/activemq-artemis"
 
-# Create the broker instance
+echo "--> Creating the broker instance" >> "$LOG_FILE"
 
 "$LIB_DIR/activemq-artemis/bin/artemis" create "$LIB_DIR/activemq-artemis-instance" \
                                         --user example --password example \
                                         --host localhost --allow-anonymous \
                                         --etc "$CONFIG_DIR/activemq-artemis" >> "$LOG_FILE" 2>&1
 
-# Burn the instance location into the scripts
+echo "--> Burning the instance dir into to the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
 sed -i.backup "18aARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
 
-# Create symlinks to the scripts
+echo "--> Creating symlinks to the scripts" >> "$LOG_FILE"
 
 (
     mkdir -p "$BIN_DIR"
@@ -104,6 +104,14 @@ echo
 echo "# Testing the installation"
 echo
 
+echo "--> Testing the artemis command" >> "$LOG_FILE"
+
+PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
+
+# XXX Check for free ports
+
+echo "--> Testing the server" >> "$LOG_FILE"
+
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 PATH="$BIN_DIR:$PATH" artemis check node >> "$LOG_FILE" 2>&1
 
@@ -117,10 +125,10 @@ kill `cat "$LIB_DIR/activemq-artemis-instance/data/artemis.pid"` >> "$LOG_FILE" 
 echo "  Result: OK"
 
 echo
-echo "# The broker is now ready"
+echo "# Summary"
 echo
 
-echo "  Command: artemis run"
+echo "  The broker is now ready.  Use 'artemis run' to start the broker."
 echo
 
 # XXX Path stuff!
