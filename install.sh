@@ -91,9 +91,12 @@ echo "-- Creating the broker instance" >> "$LOG_FILE"
 echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
+ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance
+" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
+
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
+ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance
+" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
