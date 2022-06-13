@@ -1,0 +1,3 @@
+@command
+def test(app):
+    run("sh --posix install.sh")

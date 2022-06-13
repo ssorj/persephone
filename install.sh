@@ -131,7 +131,13 @@ echo "-- Testing the server" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 
-sleep 1
+for i in `seq 30`; do
+    if PATH="$BIN_DIR:$PATH" artemis-service status >> "$LOG_FILE" 2>&1; then
+        break;
+    fi
+
+    sleep 1
+done
 
 PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 
