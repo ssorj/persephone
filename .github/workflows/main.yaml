@@ -30,6 +30,8 @@ jobs:
     - run: |
         sh install.sh
         sh uninstall.sh
+    - run: |
+        cat ~/artemis-install.log
   macos:
     runs-on: macos-latest
     steps:
@@ -41,6 +43,8 @@ jobs:
     - run: |
         sh install.sh
         sh uninstall.sh
+    - run: |
+        cat ~/artemis-install.log
   ubuntu:
     runs-on: ubuntu-latest
     container: ubuntu:latest
@@ -52,3 +56,5 @@ jobs:
     - run: |
         sh install.sh
         sh uninstall.sh
+    - run: |
+        cat ~/artemis-install.log
