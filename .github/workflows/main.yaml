@@ -18,6 +18,11 @@ jobs:
     - run: |
         pwd
         ls -la
+        cat .bashrc
+        cat .bash_profile
+        cd $GITHUB_WORKSPACE
+        pwd
+        ls -la
         sh install.sh
         sh uninstall.sh
       shell: C:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
