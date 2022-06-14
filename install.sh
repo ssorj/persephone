@@ -25,9 +25,11 @@ echo
 echo "# Checking for required tools"
 echo
 
-for tool in curl grep lsof sed tar java; do
+for tool in curl grep lsof sed tar java fuu; do
+    echo "-- Checking for $tool" >> "$LOG_FILE"
+
     if ! which "$tool" >> "$LOG_FILE" 2>&1; then
-        echo "ERROR: Required tool $tool is not available" >> "$LOG_FILE"
+        echo "ERROR: Required tool $tool is not available" | tee -a "$LOG_FILE"
         exit 1
     fi
 done
@@ -169,6 +171,11 @@ echo "# Summary"
 echo
 
 echo "  ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
+
 echo
+echo "# Log"
+echo
+
+cat ~/artemis-install.log | sed 's/^/  /'
 
 # XXX Path stuff!
