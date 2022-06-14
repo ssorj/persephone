@@ -22,6 +22,19 @@ if [ -e "$LOG_FILE" ]; then
 fi
 
 echo
+echo "# Checking for required tools"
+echo
+
+for tool in curl grep lsof sed tar java; do
+    if ! which "$tool" >> "$LOG_FILE" 2>&1; then
+        echo "ERROR: Required tool $tool is not available" >> "$LOG_FILE"
+        exit 1
+    fi
+done
+
+echo "  Result: OK"
+
+echo
 echo "# Downloading ActiveMQ Artemis"
 echo
 
@@ -41,7 +54,7 @@ echo
 echo "  Result: OK"
 
 echo
-echo "# Saving any existing installation to a backup location"
+echo "# Saving existing installation to a backup location"
 echo
 
 echo "-- Saving the previous config dir" >> "$LOG_FILE"
@@ -124,8 +137,8 @@ PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
 for port in 61616 5672 61613 1883 8161; do
-    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep $port > /dev/null; then
-        echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
+    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null; then
+        echo "ERROR: Required port $port is in use by something else" >> "$LOG_FILE"
         exit 1
     fi
 done
