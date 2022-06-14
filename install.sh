@@ -14,7 +14,7 @@ BACKUP_DIR="$HOME/artemis-backup"
 LOG_FILE="$HOME/artemis-install.log"
 
 if [ -n "$BASH" ]; then
-    function trouble {
+    trouble() {
         echo
         echo "TROUBLE! Things didn't go to plan.  Here's the log:"
         echo
