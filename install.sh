@@ -25,7 +25,9 @@ echo
 echo "# Checking for required tools"
 echo
 
-for tool in curl grep lsof sed tar java fuu; do
+# XXX Check for which and tee
+
+for tool in curl grep lsof sed tar java; do
     echo "-- Checking for $tool" >> "$LOG_FILE"
 
     if ! which "$tool" >> "$LOG_FILE" 2>&1; then
