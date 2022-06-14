@@ -5,6 +5,17 @@ on:
   schedule:
     - cron: "0 0 * * 0"
 jobs:
+  cygwin:
+    runs-on: windows-latest
+    steps:
+    - run: git config --global core.autocrlf input
+    - uses: actions/checkout@v3
+    - uses: cygwin/cygwin-install-action@master
+    - run: |
+        sh install.sh
+        echo "# Log"
+        echo
+        cat ~/artemis-install.log | sed 's/^/  /'
   fedora:
     runs-on: ubuntu-latest
     container: fedora:latest
