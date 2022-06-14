@@ -9,8 +9,8 @@ CONFIG_DIR="$HOME/.config"
 LIB_DIR="$HOME/.local/lib"
 
 TEMP_DIR=`mktemp -d`
-BACKUP_DIR="$HOME/activemq-artemis-backup"
-LOG_FILE="$HOME/activemq-artemis-install.log"
+BACKUP_DIR="$HOME/artemis-backup"
+LOG_FILE="$HOME/artemis-install.log"
 
 if [ -e "$BACKUP_DIR" ]; then
     mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
@@ -45,23 +45,23 @@ echo
 
 echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
-if [ -e "$LIB_DIR/activemq-artemis" ]; then
+if [ -e "$LIB_DIR/artemis" ]; then
     mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
-    mv "$LIB_DIR/activemq-artemis" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+    mv "$LIB_DIR/artemis" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 
-if [ -e "$LIB_DIR/activemq-artemis-instance" ]; then
+if [ -e "$LIB_DIR/artemis-instance" ]; then
     mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
-    mv "$LIB_DIR/activemq-artemis-instance" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+    mv "$LIB_DIR/artemis-instance" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous config dir" >> "$LOG_FILE"
 
-if [ -e "$CONFIG_DIR/activemq-artemis" ]; then
+if [ -e "$CONFIG_DIR/artemis" ]; then
     mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
-    mv "$CONFIG_DIR/activemq-artemis" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+    mv "$CONFIG_DIR/artemis" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
 fi
 
 if [ -e "$BACKUP_DIR" ]; then
@@ -78,25 +78,25 @@ echo
 echo "-- Moving the dist dir to its standard location" >> "$LOG_FILE"
 
 mkdir -p "$LIB_DIR"
-mv "$TEMP_DIR/dist" "$LIB_DIR/activemq-artemis"
+mv "$TEMP_DIR/dist" "$LIB_DIR/artemis"
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
-"$LIB_DIR/activemq-artemis/bin/artemis" create "$LIB_DIR/activemq-artemis-instance" \
-                                        --user example --password example \
-                                        --host localhost --allow-anonymous \
-                                        --no-hornetq-acceptor \
-                                        --etc "$CONFIG_DIR/activemq-artemis" >> "$LOG_FILE" 2>&1
+"$LIB_DIR/artemis/bin/artemis" create "$LIB_DIR/artemis-instance" \
+                               --user example --password example \
+                               --host localhost --allow-anonymous \
+                               --no-hornetq-acceptor \
+                               --etc "$CONFIG_DIR/artemis" >> "$LOG_FILE" 2>&1
 
 echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance
-" "$LIB_DIR/activemq-artemis-instance/bin/artemis"
+ARTEMIS_INSTANCE=$LIB_DIR/artemis-instance
+" "$LIB_DIR/artemis-instance/bin/artemis"
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/activemq-artemis-instance
-" "$LIB_DIR/activemq-artemis-instance/bin/artemis-service"
+ARTEMIS_INSTANCE=$LIB_DIR/artemis-instance
+" "$LIB_DIR/artemis-instance/bin/artemis-service"
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
@@ -104,8 +104,8 @@ echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
     mkdir -p "$BIN_DIR"
     cd "$BIN_DIR"
 
-    ln -sf ../lib/activemq-artemis-instance/bin/artemis
-    ln -sf ../lib/activemq-artemis-instance/bin/artemis-service
+    ln -sf ../lib/artemis-instance/bin/artemis
+    ln -sf ../lib/artemis-instance/bin/artemis-service
 )
 
 echo "  Result: OK"
@@ -121,7 +121,7 @@ PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
 for port in 61616 5672 61613 1883 8161; do
-    if lsof -PiTCP -sTCP:LISTEN 2> "$LOG_FILE" | grep $port > /dev/null; then
+    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep $port > /dev/null; then
         echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
         exit 1
     fi
@@ -132,7 +132,7 @@ echo "-- Testing the server" >> "$LOG_FILE"
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 
 for i in `seq 10`; do
-    if lsof -PiTCP -sTCP:LISTEN 2> "$LOG_FILE" | grep 61616 > /dev/null; then
+    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
         break;
     fi
 
@@ -146,7 +146,7 @@ PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 #
 # PATH="$BIN_DIR:$PATH" artemis-service stop "$LOG_FILE" 2>&1
 
-kill `cat "$LIB_DIR/activemq-artemis-instance/data/artemis.pid"` >> "$LOG_FILE" 2>&1
+kill `cat "$LIB_DIR/artemis-instance/data/artemis.pid"` >> "$LOG_FILE" 2>&1
 
 echo "  Result: OK"
 

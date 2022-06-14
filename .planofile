@@ -1,3 +1,6 @@
 @command
 def test(app):
+    run("sh --posix uninstall.sh")
+    run("sh --posix uninstall.sh")
+    run("sh --posix install.sh")
     run("sh --posix install.sh")
