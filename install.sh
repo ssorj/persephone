@@ -27,7 +27,7 @@ echo
 
 # XXX Check for which and tee
 
-for tool in curl grep lsof sed tar java; do
+for tool in curl grep sed tar java; do
     echo "-- Checking for $tool" >> "$LOG_FILE"
 
     if ! which "$tool" >> "$LOG_FILE" 2>&1; then
@@ -140,24 +140,30 @@ PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
-for port in 61616 5672 61613 1883 8161; do
-    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null; then
-        echo "ERROR: Required port $port is in use by something else" >> "$LOG_FILE"
-        exit 1
-    fi
-done
+if which lsof > /dev/null 2>&1; then
+    for port in 61616 5672 61613 1883 8161; do
+        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null; then
+            echo "ERROR: Required port $port is in use by something else" >> "$LOG_FILE"
+            exit 1
+        fi
+    done
+fi
 
 echo "-- Testing the server" >> "$LOG_FILE"
 
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 
-for i in `seq 10`; do
-    if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
-        break;
-    fi
+if which lsof > /dev/null 2>&1; then
+    for i in `seq 10`; do
+        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
+            break;
+        fi
 
-    sleep 1
-done
+        sleep 1
+    done
+else
+    sleep 2
+fi
 
 PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 
