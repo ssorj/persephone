@@ -21,6 +21,9 @@ if [ -e "$LOG_FILE" ]; then
     mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
 fi
 
+# XXX
+trap "cat ~/artemis-install.log | sed 's/^/  /'" 0
+
 echo
 echo "# Checking for required tools"
 echo
