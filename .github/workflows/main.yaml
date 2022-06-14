@@ -16,8 +16,7 @@ jobs:
         java-version: "17"
     - uses: cygwin/cygwin-install-action@master
     - shell: sh
-      run: |
-        pwd
+      run: >-
         ls -l
         sh install.sh
         sh uninstall.sh
