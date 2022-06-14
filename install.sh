@@ -109,17 +109,21 @@ echo "-- Creating the broker instance" >> "$LOG_FILE"
                         --user example --password example \
                         --host localhost --allow-anonymous \
                         --no-hornetq-acceptor \
-                        --etc "$CONFIG_DIR" >> "$LOG_FILE" 2>&1
+                        --etc "$CONFIG_DIR" \
+                        >> "$LOG_FILE" 2>&1
 
 echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
-sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$INSTANCE_DIR
-" "$INSTANCE_DIR/bin/artemis"
+ls -l "$INSTANCE_DIR"
+ls -l "$INSTANCE_DIR/bin"
 
 sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$INSTANCE_DIR
-" "$INSTANCE_DIR/bin/artemis-service"
+" "$INSTANCE_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
+
+sed -i.backup "18a\\
+ARTEMIS_INSTANCE=$INSTANCE_DIR
+" "$INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
