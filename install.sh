@@ -80,8 +80,7 @@ echo
 
 echo "-- Moving the dist dir to its standard location" >> "$LOG_FILE"
 
-# mkdir -p "$LIB_DIR"
-# XXX
+mkdir -p `dirname "$DIST_DIR"`
 mv "$TEMP_DIR/dist" "$DIST_DIR"
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
