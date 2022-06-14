@@ -121,7 +121,7 @@ PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
 for port in 61616 5672 61613 1883 8161; do
-    if lsof -PiTCP -sTCP:LISTEN 2> "$LOG_FILE" | grep $port; then
+    if lsof -PiTCP -sTCP:LISTEN 2> "$LOG_FILE" | grep $port > /dev/null; then
         echo "ERROR: Required port 61616 is in use by something else" >> "$LOG_FILE"
         exit 1
     fi
@@ -132,19 +132,14 @@ echo "-- Testing the server" >> "$LOG_FILE"
 PATH="$BIN_DIR:$PATH" artemis-service start >> "$LOG_FILE" 2>&1
 
 for i in `seq 10`; do
-    if PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1; then
+    if lsof -PiTCP -sTCP:LISTEN 2> "$LOG_FILE" | grep 61616 > /dev/null; then
         break;
     fi
 
     sleep 1
 done
 
-if [ "$i" -eq 10 ]; then
-    echo "ERROR: Artemis node check failed" >> "$LOG_FILE"
-    exit 1
-fi
-
-echo $i
+PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 
 # The 'artemis-service stop' command times out too quickly for CI, so
 # I take an alternate approach.
