@@ -11,8 +11,22 @@ INSTANCE_DIR="$HOME/.local/state/artemis"
 
 # XXX First, backups
 
-rm "$BIN_DIR/artemis" || :
-rm "$BIN_DIR/artemis-service" || :
-rm -rf "$CONFIG_DIR" || :
-rm -rf "$DIST_DIR" || :
-rm -rf "$INSTANCE_DIR" || :
+if [ -e "$BIN_DIR/artemis" ]; then
+    rm "$BIN_DIR/artemis"
+fi
+
+if [ -e "$BIN_DIR/artemis-service" ]; then
+    rm "$BIN_DIR/artemis-service"
+fi
+
+if [ -e "$CONFIG_DIR" ]; then
+    rm -rf "$CONFIG_DIR"
+fi
+
+if [ -e "$DIST_DIR" ]; then
+    rm -rf "$DIST_DIR"
+fi
+
+if [ -e "$INSTANCE_DIR" ]; then
+    rm -rf "$INSTANCE_DIR"
+fi

@@ -44,6 +44,13 @@ echo
 echo "# Saving any existing installation to a backup location"
 echo
 
+echo "-- Saving the previous config dir" >> "$LOG_FILE"
+
+if [ -e "$CONFIG_DIR" ]; then
+    mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+    mv "$CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+fi
+
 echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
 if [ -e "$DIST_DIR" ]; then
@@ -56,13 +63,6 @@ echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 if [ -e "$INSTANCE_DIR" ]; then
     mkdir -p "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
     mv "$INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
-fi
-
-echo "-- Saving the previous config dir" >> "$LOG_FILE"
-
-if [ -e "$CONFIG_DIR" ]; then
-    mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
-    mv "$CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
 fi
 
 # XXX Also save the scripts
@@ -86,10 +86,10 @@ mv "$TEMP_DIR/dist" "$DIST_DIR"
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
 "$DIST_DIR/bin/artemis" create "$INSTANCE_DIR" \
-                               --user example --password example \
-                               --host localhost --allow-anonymous \
-                               --no-hornetq-acceptor \
-                               --etc "$CONFIG_DIR" >> "$LOG_FILE" 2>&1
+                        --user example --password example \
+                        --host localhost --allow-anonymous \
+                        --no-hornetq-acceptor \
+                        --etc "$CONFIG_DIR" >> "$LOG_FILE" 2>&1
 
 echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
@@ -146,8 +146,6 @@ PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 
 # The 'artemis-service stop' command times out too quickly for CI, so
 # I take an alternate approach.
-#
-# PATH="$BIN_DIR:$PATH" artemis-service stop "$LOG_FILE" 2>&1
 
 kill `cat "$INSTANCE_DIR/data/artemis.pid"` >> "$LOG_FILE" 2>&1
 
