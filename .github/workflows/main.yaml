@@ -23,7 +23,7 @@ jobs:
     - run: |
         dnf -y install curl grep lsof sed tar which java-17-openjdk-headless
     - run: |
-        sh install.sh
+        sh install.sh || cat ~/artemis-install-log.txt
         sh uninstall.sh
   macos:
     runs-on: macos-latest
@@ -43,7 +43,7 @@ jobs:
     - uses: actions/checkout@v3
     - run: |
         apt-get -qq update
-        apt-get -qq install curl grep lsof sed tar which openjdk-17-jre-headless
+        apt-get -qq install curl grep lsof sed tar openjdk-17-jre-headless
     - run: |
         sh install.sh
         sh uninstall.sh
