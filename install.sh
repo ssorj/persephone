@@ -5,8 +5,9 @@ if [ -n "$BASH" ]; then
 fi
 
 BIN_DIR="$HOME/.local/bin"
-CONFIG_DIR="$HOME/.config"
-LIB_DIR="$HOME/.local/lib"
+CONFIG_DIR="$HOME/.config/artemis"
+DIST_DIR="$HOME/.local/share/artemis"
+INSTANCE_DIR="$HOME/.local/state/artemis"
 
 TEMP_DIR=`mktemp -d`
 BACKUP_DIR="$HOME/artemis-backup"
@@ -45,24 +46,26 @@ echo
 
 echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
-if [ -e "$LIB_DIR/artemis" ]; then
-    mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
-    mv "$LIB_DIR/artemis" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+if [ -e "$DIST_DIR" ]; then
+    mkdir -p "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
+    mv "$DIST_DIR" "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 
-if [ -e "$LIB_DIR/artemis-instance" ]; then
-    mkdir -p "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
-    mv "$LIB_DIR/artemis-instance" "$BACKUP_DIR/lib" >> "$LOG_FILE" 2>&1
+if [ -e "$INSTANCE_DIR" ]; then
+    mkdir -p "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
+    mv "$INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous config dir" >> "$LOG_FILE"
 
-if [ -e "$CONFIG_DIR/artemis" ]; then
+if [ -e "$CONFIG_DIR" ]; then
     mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
-    mv "$CONFIG_DIR/artemis" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+    mv "$CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
 fi
+
+# XXX Also save the scripts
 
 if [ -e "$BACKUP_DIR" ]; then
     echo "  Result: OK"
@@ -77,26 +80,27 @@ echo
 
 echo "-- Moving the dist dir to its standard location" >> "$LOG_FILE"
 
-mkdir -p "$LIB_DIR"
-mv "$TEMP_DIR/dist" "$LIB_DIR/artemis"
+# mkdir -p "$LIB_DIR"
+# XXX
+mv "$TEMP_DIR/dist" "$DIST_DIR"
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
-"$LIB_DIR/artemis/bin/artemis" create "$LIB_DIR/artemis-instance" \
+"$DIST_DIR/bin/artemis" create "$INSTANCE_DIR" \
                                --user example --password example \
                                --host localhost --allow-anonymous \
                                --no-hornetq-acceptor \
-                               --etc "$CONFIG_DIR/artemis" >> "$LOG_FILE" 2>&1
+                               --etc "$CONFIG_DIR" >> "$LOG_FILE" 2>&1
 
 echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/artemis-instance
-" "$LIB_DIR/artemis-instance/bin/artemis"
+ARTEMIS_INSTANCE=$INSTANCE_DIR
+" "$INSTANCE_DIR/bin/artemis"
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$LIB_DIR/artemis-instance
-" "$LIB_DIR/artemis-instance/bin/artemis-service"
+ARTEMIS_INSTANCE=$INSTANCE_DIR
+" "$INSTANCE_DIR/bin/artemis-service"
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
@@ -104,8 +108,8 @@ echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
     mkdir -p "$BIN_DIR"
     cd "$BIN_DIR"
 
-    ln -sf ../lib/artemis-instance/bin/artemis
-    ln -sf ../lib/artemis-instance/bin/artemis-service
+    ln -sf "$INSTANCE_DIR/bin/artemis"
+    ln -sf "$INSTANCE_DIR/bin/artemis-service"
 )
 
 echo "  Result: OK"
@@ -146,7 +150,7 @@ PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 #
 # PATH="$BIN_DIR:$PATH" artemis-service stop "$LOG_FILE" 2>&1
 
-kill `cat "$LIB_DIR/artemis-instance/data/artemis.pid"` >> "$LOG_FILE" 2>&1
+kill `cat "$INSTANCE_DIR/data/artemis.pid"` >> "$LOG_FILE" 2>&1
 
 echo "  Result: OK"
 
