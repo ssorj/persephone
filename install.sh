@@ -118,6 +118,7 @@ mv "$TEMP_DIR/dist" "$ARTEMIS_HOME_DIR"
 
 echo "-- Burning the Artemis home dir into the admin script" >> "$LOG_FILE"
 
+# XXX -e ?
 sed -i.backup "18a\\
 ARTEMIS_HOME=$ARTEMIS_HOME_DIR
 " "$ARTEMIS_HOME_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
@@ -147,6 +148,9 @@ ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
+
+echo "-- Patching out a problem XXX" >> "$LOG_FILE"
+sed -i.backup2 -e "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
