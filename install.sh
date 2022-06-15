@@ -6,9 +6,7 @@ fi
 
 case "`uname`" in
     CYGWIN*)
-        echo home before $HOME
         HOME=`cygpath --mixed --windows "$HOME"`
-        echo home after $HOME
         ;;
 esac
 
@@ -24,7 +22,7 @@ LOG_FILE="$HOME/artemis-install.log"
 if [ -n "$BASH" ]; then
     trouble() {
         echo
-        echo "TROUBLE! Things didn't go to plan.  Here's the log:"
+        echo "TROUBLE! Things didn't go to plan. Here's the log:"
         echo
 
         cat "$LOG_FILE" || :
@@ -32,14 +30,6 @@ if [ -n "$BASH" ]; then
 
     trap trouble ERR
 fi
-
-case "`uname`" in
-    CYGWIN*)
-        echo home $HOME
-        echo home unix `cygpath --unix "$HOME"`
-        echo home win `cygpath --windows "$HOME"`
-        ;;
-esac
 
 if [ -e "$BACKUP_DIR" ]; then
     mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
@@ -142,30 +132,13 @@ echo classpath ${CLASSPATH:-}
 sh -x "$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
                                 --user example --password example \
                                 --host localhost --allow-anonymous \
+                                --no-autotune \
                                 --no-hornetq-acceptor \
                                 --etc "$ARTEMIS_CONFIG_DIR" \
                                 --verbose \
                                 >> "$LOG_FILE" 2>&1
 
 echo "-- Burning the instance dir into the instance scripts" >> "$LOG_FILE"
-
-# Cygwin fails here due to Windows drives affecting paths.  Home is on
-# C drive, and the checkout is on D drive.
-#
-# ls -l "$ARTEMIS_INSTANCE_DIR"
-# ls -l "$ARTEMIS_INSTANCE_DIR/bin"
-
-case "`uname`" in
-    CYGWIN*)
-        echo home $HOME
-        echo home unix `cygpath --unix "$HOME"`
-        echo home win `cygpath --windows "$HOME"`
-
-        echo before $ARTEMIS_INSTANCE_DIR
-        ARTEMIS_INSTANCE_DIR=`cygpath --windows "$ARTEMIS_INSTANCE_DIR"`
-        echo after $ARTEMIS_INSTANCE_DIR
-        ;;
-esac
 
 sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
@@ -190,6 +163,8 @@ echo "   Result: OK"
 echo
 echo "== Testing the installation" | tee -a "$LOG_FILE"
 echo
+
+echo pathy "$BIN_DIR:$PATH"
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
