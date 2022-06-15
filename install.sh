@@ -4,6 +4,14 @@ if [ -n "$BASH" ]; then
     set -Eeuo pipefail
 fi
 
+case "`uname`" in
+    CYGWIN*)
+        echo home before $HOME
+        HOME=`cygpath --windows "$HOME"`
+        echo home after $HOME
+        ;;
+esac
+
 BIN_DIR="$HOME/.local/bin"
 CONFIG_DIR="$HOME/.config/artemis"
 DIST_DIR="$HOME/.local/share/artemis"
