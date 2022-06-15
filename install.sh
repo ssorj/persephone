@@ -138,8 +138,8 @@ ARTEMIS_HOME=$ARTEMIS_HOME_DIR
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
-echo java_home $JAVA_HOME || :
-echo classpath $CLASSPATH || :
+echo java_home ${JAVA_HOME:-}
+echo classpath ${CLASSPATH:-}
 
 sh -x "$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
                                 --user example --password example \
