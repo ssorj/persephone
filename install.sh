@@ -7,7 +7,7 @@ fi
 case "`uname`" in
     CYGWIN*)
         echo home before $HOME
-        HOME=`cygpath --windows "$HOME"`
+        HOME=`cygpath --mixed --windows "$HOME"`
         echo home after $HOME
         ;;
 esac
@@ -27,9 +27,7 @@ if [ -n "$BASH" ]; then
         echo "TROUBLE! Things didn't go to plan.  Here's the log:"
         echo
 
-        if [ -e "$LOG_FILE" ]; then
-            cat "$LOG_FILE" | sed "s/^/  /"
-        fi
+        cat "$LOG_FILE" || :
     }
 
     trap trouble ERR
