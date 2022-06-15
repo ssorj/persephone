@@ -97,8 +97,6 @@ if [ -e "$INSTANCE_DIR" ]; then
     mv "$INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
 fi
 
-# XXX Also save the scripts
-
 if [ -e "$BACKUP_DIR" ]; then
     echo "   Result: OK"
     echo "   Backup: $BACKUP_DIR"
@@ -131,6 +129,14 @@ echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 #
 # ls -l "$INSTANCE_DIR"
 # ls -l "$INSTANCE_DIR/bin"
+
+case "`uname`" in
+    CYGWIN*)
+        echo before $INSTANCE_DIR
+        INSTANCE_DIR=`cygpath --windows "$INSTANCE_DIR"`
+        echo after $INSTANCE_DIR
+        ;;
+esac
 
 sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$INSTANCE_DIR
@@ -203,3 +209,5 @@ echo
 echo "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
 
 # XXX Path stuff!
+
+# XXX details as properties
