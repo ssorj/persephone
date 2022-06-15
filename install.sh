@@ -169,6 +169,15 @@ echo pathy "$BIN_DIR:$PATH"
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
+echo bd/artemis
+"$BIN_DIR/artemis" version || :
+echo bd/artemis.exe
+"$BIN_DIR/artemis.exe" version || :
+echo id/bin/artemis
+"$ARTEMIS_INSTANCE_DIR/bin/artemis" version || :
+echo id/bin/artemis.exe
+"$ARTEMIS_INSTANCE_DIR/bin/artemis.exe" version || :
+
 PATH="$BIN_DIR:$PATH" artemis version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
