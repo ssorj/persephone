@@ -16,6 +16,8 @@ jobs:
         java-version: "17"
     - uses: cygwin/cygwin-install-action@master
     - run: |
+        echo $CYGWIN
+        export CYGWIN=winsymlinks:nativestrict
         sh install.sh
         sh uninstall.sh
         cat ~/artemis-install.log

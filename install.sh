@@ -165,6 +165,7 @@ echo "== Testing the installation" | tee -a "$LOG_FILE"
 echo
 
 echo pathy "$BIN_DIR:$PATH"
+# XXX Use export path here
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
