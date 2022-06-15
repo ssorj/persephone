@@ -13,9 +13,9 @@ case "`uname`" in
 esac
 
 BIN_DIR="$HOME/.local/bin"
-CONFIG_DIR="$HOME/.config/artemis"
-DIST_DIR="$HOME/.local/share/artemis"
-INSTANCE_DIR="$HOME/.local/state/artemis"
+ARTEMIS_CONFIG_DIR="$HOME/.config/artemis"
+ARTEMIS_HOME_DIR="$HOME/.local/share/artemis"
+ARTEMIS_INSTANCE_DIR="$HOME/.local/state/artemis"
 
 TEMP_DIR=`mktemp -d`
 BACKUP_DIR="$HOME/artemis-backup"
@@ -93,23 +93,23 @@ echo
 
 echo "-- Saving the previous config dir" >> "$LOG_FILE"
 
-if [ -e "$CONFIG_DIR" ]; then
+if [ -e "$ARTEMIS_CONFIG_DIR" ]; then
     mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
-    mv "$CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
+    mv "$ARTEMIS_CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
-if [ -e "$DIST_DIR" ]; then
+if [ -e "$ARTEMIS_HOME_DIR" ]; then
     mkdir -p "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
-    mv "$DIST_DIR" "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
+    mv "$ARTEMIS_HOME_DIR" "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
 fi
 
 echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 
-if [ -e "$INSTANCE_DIR" ]; then
+if [ -e "$ARTEMIS_INSTANCE_DIR" ]; then
     mkdir -p "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
-    mv "$INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
+    mv "$ARTEMIS_INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
 fi
 
 if [ -e "$BACKUP_DIR" ]; then
@@ -125,25 +125,33 @@ echo
 
 echo "-- Moving the downloaded dist dir to its install location" >> "$LOG_FILE"
 
-mkdir -p `dirname "$DIST_DIR"`
-mv "$TEMP_DIR/dist" "$DIST_DIR"
+mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
+mv "$TEMP_DIR/dist" "$ARTEMIS_HOME_DIR"
+
+echo "-- Burning the Artemis home dir into the admin script" >> "$LOG_FILE"
+
+sed -i.backup "18a\\
+ARTEMIS_HOME=$ARTEMIS_HOME_DIR
+" "$ARTEMIS_HOME_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
+
+# XXX Consider just setting this in the env when I invoke stuff (and for instance dir as well)
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
-"$DIST_DIR/bin/artemis" create "$INSTANCE_DIR" \
-                        --user example --password example \
-                        --host localhost --allow-anonymous \
-                        --no-hornetq-acceptor \
-                        --etc "$CONFIG_DIR" \
-                        >> "$LOG_FILE" 2>&1
+"$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
+                                --user example --password example \
+                                --host localhost --allow-anonymous \
+                                --no-hornetq-acceptor \
+                                --etc "$ARTEMIS_CONFIG_DIR" \
+                                >> "$LOG_FILE" 2>&1
 
-echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
+echo "-- Burning the instance dir into the instance scripts" >> "$LOG_FILE"
 
 # Cygwin fails here due to Windows drives affecting paths.  Home is on
 # C drive, and the checkout is on D drive.
 #
-# ls -l "$INSTANCE_DIR"
-# ls -l "$INSTANCE_DIR/bin"
+# ls -l "$ARTEMIS_INSTANCE_DIR"
+# ls -l "$ARTEMIS_INSTANCE_DIR/bin"
 
 case "`uname`" in
     CYGWIN*)
@@ -151,19 +159,19 @@ case "`uname`" in
         echo home unix `cygpath --unix "$HOME"`
         echo home win `cygpath --windows "$HOME"`
 
-        echo before $INSTANCE_DIR
-        INSTANCE_DIR=`cygpath --windows "$INSTANCE_DIR"`
-        echo after $INSTANCE_DIR
+        echo before $ARTEMIS_INSTANCE_DIR
+        ARTEMIS_INSTANCE_DIR=`cygpath --windows "$ARTEMIS_INSTANCE_DIR"`
+        echo after $ARTEMIS_INSTANCE_DIR
         ;;
 esac
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$INSTANCE_DIR
-" "$INSTANCE_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
+ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
+" "$ARTEMIS_INSTANCE_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
 
 sed -i.backup "18a\\
-ARTEMIS_INSTANCE=$INSTANCE_DIR
-" "$INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
+ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
+" "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
@@ -171,8 +179,8 @@ echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
     mkdir -p "$BIN_DIR"
     cd "$BIN_DIR"
 
-    ln -sf "$INSTANCE_DIR/bin/artemis"
-    ln -sf "$INSTANCE_DIR/bin/artemis-service"
+    ln -sf "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+    ln -sf "$ARTEMIS_INSTANCE_DIR/bin/artemis-service"
 )
 
 echo "   Result: OK"
@@ -217,7 +225,7 @@ PATH="$BIN_DIR:$PATH" artemis check node --verbose >> "$LOG_FILE" 2>&1
 # The 'artemis-service stop' command times out too quickly for CI, so
 # I take an alternate approach.
 
-kill `cat "$INSTANCE_DIR/data/artemis.pid"` >> "$LOG_FILE" 2>&1
+kill `cat "$ARTEMIS_INSTANCE_DIR/data/artemis.pid"` >> "$LOG_FILE" 2>&1
 
 echo "   Result: OK"
 
