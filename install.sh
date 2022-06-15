@@ -27,6 +27,13 @@ if [ -n "$BASH" ]; then
     trap trouble ERR
 fi
 
+case "`uname`" in
+    CYGWIN*)
+        echo home $HOME
+        echo home unix `cygpath --unix "$HOME"`
+        echo home win `cygpath --windows "$HOME"`
+        ;;
+esac
 
 if [ -e "$BACKUP_DIR" ]; then
     mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
@@ -132,6 +139,10 @@ echo "-- Burning the instance dir into the scripts" >> "$LOG_FILE"
 
 case "`uname`" in
     CYGWIN*)
+        echo home $HOME
+        echo home unix `cygpath --unix "$HOME"`
+        echo home win `cygpath --windows "$HOME"`
+
         echo before $INSTANCE_DIR
         INSTANCE_DIR=`cygpath --windows "$INSTANCE_DIR"`
         echo after $INSTANCE_DIR
