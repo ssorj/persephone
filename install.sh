@@ -36,9 +36,9 @@ ARTEMIS_CONFIG_DIR="$HOME/.config/artemis"
 ARTEMIS_HOME_DIR="$HOME/.local/share/artemis"
 ARTEMIS_INSTANCE_DIR="$HOME/.local/state/artemis"
 
-TEMP_DIR=`mktemp -d`
 BACKUP_DIR="$HOME/artemis-backup"
-LOG_FILE="$HOME/artemis-install.log"
+CACHE_DIR="$HOME/.cache/artemis-install"
+LOG_FILE="$CACHE_DIR/install.log"
 
 if [ -n "$BASH" ]; then
     trouble() {
@@ -82,15 +82,21 @@ echo "== Downloading ActiveMQ Artemis" | tee -a "$LOG_FILE"
 echo
 
 (
-    cd "$TEMP_DIR"
+    cd "$CACHE_DIR"
 
-    echo "-- Fetching the latest dist tarball" >> "$LOG_FILE"
+    if [ ! -e apache-artemis-2.22.0-bin.tar.gz ]; then
+        echo "-- Fetching the latest release tarball" >> "$LOG_FILE"
 
-    curl --no-progress-meter -fLo dist.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+        curl --no-progress-meter -fLo apache-artemis-2.22.0-bin.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+    else
+        echo "-- Using the cached release tarball" >> "$LOG_FILE"
+    fi
 
     echo "-- Extracting files from the tarball " >> "$LOG_FILE"
 
-    tar -xf dist.tar.gz >> "$LOG_FILE" 2>&1
+    tar -xf apache-artemis-2.22.0-bin.tar.gz >> "$LOG_FILE" 2>&1
+
+    # XXX We can skip this step
     mv apache-artemis-2.22.0 dist >> "$LOG_FILE" 2>&1
 )
 
@@ -135,7 +141,7 @@ echo
 echo "-- Moving the downloaded dist dir to its install location" >> "$LOG_FILE"
 
 mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
-mv "$TEMP_DIR/dist" "$ARTEMIS_HOME_DIR"
+mv "$CACHE_DIR/dist" "$ARTEMIS_HOME_DIR"
 
 echo "-- Burning the Artemis home dir into the admin script" >> "$LOG_FILE"
 
