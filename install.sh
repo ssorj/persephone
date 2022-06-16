@@ -1,12 +1,33 @@
 #!/bin/sh
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 
 if [ -n "$BASH" ]; then
     set -Eeuo pipefail
 fi
 
+CYGWIN=
+
 case "`uname`" in
     CYGWIN*)
         HOME=`cygpath --mixed --windows "$HOME"`
+        CYGWIN=1
         ;;
 esac
 
@@ -45,7 +66,7 @@ echo
 
 # XXX Check for tee
 
-for tool in curl grep sed tar java; do
+for tool in curl grep java sed tar uname; do
     echo "-- Checking for $tool" >> "$LOG_FILE"
 
     if ! command -v "$tool" >> "$LOG_FILE" 2>&1; then
@@ -118,12 +139,9 @@ mv "$TEMP_DIR/dist" "$ARTEMIS_HOME_DIR"
 
 echo "-- Burning the Artemis home dir into the admin script" >> "$LOG_FILE"
 
-# XXX -e ?
 sed -i.backup "18a\\
 ARTEMIS_HOME=$ARTEMIS_HOME_DIR
 " "$ARTEMIS_HOME_DIR/bin/artemis" >> "$LOG_FILE" 2>&1
-
-# XXX Consider just setting this in the env when I invoke stuff (and for instance dir as well)
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
@@ -146,26 +164,22 @@ sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
-echo "-- Patching problem 1" >> "$LOG_FILE"
+if [ -n "$CYGWIN" ]; then
+    echo "-- Patching problem 1" >> "$LOG_FILE"
 
-# This bit of the Artemis instance script uses a cygpath --unix,
-# cygpath --windows sequence that ends up stripping out the drive
-# letter and replacing it with whatever the current drive is. If your
-# current drive is different from the Artemis install drive, trouble.
-#
-# For the bug: Annotate the current code.  Suggest --absolute.
+    # This bit of the Artemis instance script uses a cygpath --unix,
+    # cygpath --windows sequence that ends up stripping out the drive
+    # letter and replacing it with whatever the current drive is. If your
+    # current drive is different from the Artemis install drive, trouble.
+    #
+    # For the bug: Annotate the current code.  Suggest --absolute.
 
-sed -i.backup2 "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+    sed -i.backup2 "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
 
-case "`uname`" in
-    CYGWIN*)
-        echo "-- Patching problem 2" >> "$LOG_FILE"
+    echo "-- Patching problem 2" >> "$LOG_FILE"
 
-        sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "$ARTEMIS_INSTANCE_DIR/bin/artemis"
-        ;;
-esac
-
-
+    sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+fi
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
@@ -185,7 +199,7 @@ echo
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
-sh -x "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
+"$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
@@ -211,7 +225,6 @@ if command -v lsof > /dev/null 2>&1; then
         sleep 2
     done
 else
-    # XXX log that we don't have lsof so can't do it
     sleep 30
 fi
 
