@@ -127,9 +127,6 @@ ARTEMIS_HOME=$ARTEMIS_HOME_DIR
 
 echo "-- Creating the broker instance" >> "$LOG_FILE"
 
-echo java_home ${JAVA_HOME:-}
-echo classpath ${CLASSPATH:-}
-
 "$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
                                 --user example --password example \
                                 --host localhost --allow-anonymous \
@@ -149,7 +146,7 @@ sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
-echo "-- Patching out a problem XXX" >> "$LOG_FILE"
+echo "-- Patching problem 1" >> "$LOG_FILE"
 
 # This bit of the Artemis instance script uses a cygpath --unix,
 # cygpath --windows sequence that ends up stripping out the drive
@@ -158,7 +155,17 @@ echo "-- Patching out a problem XXX" >> "$LOG_FILE"
 #
 # For the bug: Annotate the current code.  Suggest --absolute.
 
-sed -i.backup2 -e "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+sed -i.backup2 "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+
+case "`uname`" in
+    CYGWIN*)
+        echo "-- Patching problem 2" >> "$LOG_FILE"
+
+        sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "$ARTEMIS_INSTANCE_DIR/bin/artemis"
+        ;;
+esac
+
+
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
 
@@ -177,17 +184,6 @@ echo "== Testing the installation" | tee -a "$LOG_FILE"
 echo
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
-
-
-case "`uname`" in
-    CYGWIN*)
-        echo 111
-        ls -l 'C:\cygwin\home\runneradmin\.local\share\artemis/lib/' || :
-        ls -l 'C:/cygwin/home/runneradmin/.local/share/artemis/lib/' || :
-        echo 222
-        ;;
-esac
-
 
 sh -x "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
