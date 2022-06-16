@@ -150,6 +150,14 @@ ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
 echo "-- Patching out a problem XXX" >> "$LOG_FILE"
+
+# This bit of the Artemis instance script uses a cygpath --unix,
+# cygpath --windows sequence that ends up stripping out the drive
+# letter and replacing it with whatever the current drive is. If your
+# current drive is different from the Artemis install drive, trouble.
+#
+# For the bug: Annotate the current code.  Suggest --absolute.
+
 sed -i.backup2 -e "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
 
 echo "-- Creating symlinks to the scripts" >> "$LOG_FILE"
