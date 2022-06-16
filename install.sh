@@ -216,7 +216,8 @@ if command -v lsof > /dev/null 2>&1; then
         sleep 1
     done
 else
-    sleep 2
+    # XXX log that we don't have lsof so can't do it
+    sleep 10
 fi
 
 "$BIN_DIR/artemis" check node --verbose >> "$LOG_FILE" 2>&1
