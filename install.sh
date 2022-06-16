@@ -178,6 +178,17 @@ echo
 
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
+
+case "`uname`" in
+    CYGWIN*)
+        echo 111
+        ls -l 'C:\cygwin\home\runneradmin\.local\share\artemis/lib/' || :
+        ls -l 'C:/cygwin/home/runneradmin/.local/share/artemis/lib/' || :
+        echo 222
+        ;;
+esac
+
+
 sh -x "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
@@ -196,16 +207,16 @@ echo "-- Testing the server" >> "$LOG_FILE"
 "$BIN_DIR/artemis-service" start >> "$LOG_FILE" 2>&1
 
 if command -v lsof > /dev/null 2>&1; then
-    for i in `seq 10`; do
+    for i in `seq 15`; do
         if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
             break;
         fi
 
-        sleep 1
+        sleep 2
     done
 else
     # XXX log that we don't have lsof so can't do it
-    sleep 10
+    sleep 30
 fi
 
 "$BIN_DIR/artemis" check node --verbose >> "$LOG_FILE" 2>&1
