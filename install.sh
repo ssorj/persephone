@@ -201,9 +201,9 @@ echo "-- Testing the artemis command" >> "$LOG_FILE"
 
 "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
-echo "-- Checking that the required ports are available" >> "$LOG_FILE"
-
 if command -v lsof > /dev/null 2>&1; then
+    echo "-- Checking that the required ports are available" >> "$LOG_FILE"
+
     for port in 61616 5672 61613 1883 8161; do
         if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null; then
             echo "ERROR: Required port $port is in use by something else" >> "$LOG_FILE"
