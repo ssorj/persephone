@@ -130,7 +130,7 @@ echo "-- Creating the broker instance" >> "$LOG_FILE"
 echo java_home ${JAVA_HOME:-}
 echo classpath ${CLASSPATH:-}
 
-sh -x "$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
+"$ARTEMIS_HOME_DIR/bin/artemis" create "$ARTEMIS_INSTANCE_DIR" \
                                 --user example --password example \
                                 --host localhost --allow-anonymous \
                                 --no-autotune \
@@ -176,21 +176,9 @@ echo
 echo "== Testing the installation" | tee -a "$LOG_FILE"
 echo
 
-echo pathy "$BIN_DIR:$PATH"
-# XXX Use export path here
-
 echo "-- Testing the artemis command" >> "$LOG_FILE"
 
-echo bd/artemis
-"$BIN_DIR/artemis" version || :
-echo bd/artemis.exe
-"$BIN_DIR/artemis.exe" version || :
-echo id/bin/artemis
-"$ARTEMIS_INSTANCE_DIR/bin/artemis" version || :
-echo id/bin/artemis.exe
-"$ARTEMIS_INSTANCE_DIR/bin/artemis.exe" version || :
-
-"$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
+sh -x "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
 echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
