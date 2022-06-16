@@ -40,6 +40,8 @@ BACKUP_DIR="$HOME/artemis-backup"
 CACHE_DIR="$HOME/.cache/artemis-install"
 LOG_FILE="$CACHE_DIR/install.log"
 
+mkdir -p "$CACHE_DIR"
+
 if [ -n "$BASH" ]; then
     trouble() {
         echo
