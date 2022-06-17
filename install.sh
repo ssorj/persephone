@@ -111,8 +111,18 @@ else
     echo "-- Using the cached release archive" >> "$LOG_FILE"
 fi
 
+# XXX Consider:
+#
+# - Avoid --force-local by using absolute cygwin unixy paths
+
+# XXX This is alleged to work on Solaris:
+#
+# gzip -dc < the.tar.gz | (cd /path/to/extraction/point && tar xvf -)
+
+# XXX Broadly, adding --posix if I can will help.  I can! export POSIXLY_CORRECT=something.
+
 if [ "$CYGWIN" ]; then
-    tar --force-local -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
+    tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" --force-local >> "$LOG_FILE" 2>&1
 else
     tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
 fi
@@ -159,7 +169,11 @@ echo
 
 echo "-- Moving the release dir to its install location" >> "$LOG_FILE"
 
-assert "! -e $ARTEMIS_HOME_DIR"
+echo 111
+ls -l `dirname $ARTEMIS_HOME_DIR`
+echo 222
+
+assert "! -e '$ARTEMIS_HOME_DIR'"
 
 mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
 mv "$RELEASE_DIR" "$ARTEMIS_HOME_DIR"
@@ -272,6 +286,9 @@ echo "== Summary" | tee -a "$LOG_FILE"
 echo
 
 echo "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
+
+# If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
+# If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)
 
 # XXX Path stuff!
 
