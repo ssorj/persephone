@@ -23,7 +23,7 @@ jobs:
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
       - run: sh uninstall.sh
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
-      - run: cat ~/.cache/artemis-install/script-install.log
+      - run: cat ~/.cache/artemis-install-script/install.log
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
   fedora:
     runs-on: ubuntu-latest

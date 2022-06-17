@@ -169,6 +169,7 @@ echo
 
 echo "-- Moving the release dir to its install location" >> "$LOG_FILE"
 
+mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
 echo 111
 ls -l `dirname $ARTEMIS_HOME_DIR`
 echo 222
