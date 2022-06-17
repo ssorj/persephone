@@ -1,7 +1,7 @@
 # Persephone
 
 ~~~ shell
-curl https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
+curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
 ~~~
 
 ## Topics

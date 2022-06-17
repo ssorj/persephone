@@ -111,7 +111,12 @@ else
     echo "-- Using the cached release archive" >> "$LOG_FILE"
 fi
 
-tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
+if [ "$CYGWIN" ]; then
+    tar --force-local -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
+else
+    tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
+fi
+
 assert "-d $RELEASE_DIR"
 
 echo "   Result: OK"

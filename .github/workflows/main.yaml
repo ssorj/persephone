@@ -23,19 +23,19 @@ jobs:
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
       - run: sh uninstall.sh
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
-      - run: cat ~/.cache/artemis-install/install.log
+      - run: cat ~/.cache/artemis-install/script/install.log
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
   fedora:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
       - uses: actions/checkout@v3
-      - run: dnf -y install coreutils curl grep lsof sed tar which java-17-openjdk-headless
+      - run: dnf -y install coreutils curl gawk grep lsof sed tar which java-17-openjdk-headless
       - run: sh install.sh
       - run: sh install.sh
       - run: sh uninstall.sh
       - run: sh uninstall.sh
-      - run: cat ~/.cache/artemis-install/install.log
+      - run: cat ~/.cache/artemis-install-script/install.log
   macos:
     runs-on: macos-latest
     steps:
@@ -48,16 +48,16 @@ jobs:
       - run: sh install.sh
       - run: sh uninstall.sh
       - run: sh uninstall.sh
-      - run: cat ~/.cache/artemis-install/install.log
+      - run: cat ~/.cache/artemis-install-script/install.log
   ubuntu:
     runs-on: ubuntu-latest
     container: ubuntu:latest
     steps:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
-      - run: apt-get -qq install coreutils curl grep lsof sed tar openjdk-17-jre-headless
+      - run: apt-get -qq install coreutils curl grep lsof mawk sed tar openjdk-17-jre-headless
       - run: sh install.sh
       - run: sh install.sh
       - run: sh uninstall.sh
       - run: sh uninstall.sh
-      - run: cat ~/.cache/artemis-install/install.log
+      - run: cat ~/.cache/artemis-install-script/install.log
