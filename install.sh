@@ -19,15 +19,19 @@
 #
 
 if [ -n "$BASH" ]; then
+    echo 333 This is Bash
     set -Eeuo pipefail
+    export POSIXLY_CORRECT=1
+else
+    echo 333 This is not Bash
 fi
 
-CYGWIN=
+CYGWIN_=
 
 case "`uname`" in
     CYGWIN*)
         HOME=`cygpath --mixed --windows "$HOME"`
-        CYGWIN=1
+        CYGWIN_=1
         ;;
 esac
 
@@ -121,7 +125,7 @@ fi
 
 # XXX Broadly, adding --posix if I can will help.  I can! export POSIXLY_CORRECT=something.
 
-if [ "$CYGWIN" ]; then
+if [ "$CYGWIN_" ]; then
     tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" --force-local >> "$LOG_FILE" 2>&1
 else
     tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
@@ -174,7 +178,7 @@ echo 111
 ls -l `dirname $ARTEMIS_HOME_DIR`
 echo 222
 
-assert "! -e '$ARTEMIS_HOME_DIR'"
+assert "! -e $ARTEMIS_HOME_DIR"
 
 mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
 mv "$RELEASE_DIR" "$ARTEMIS_HOME_DIR"
@@ -206,7 +210,7 @@ sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
-if [ -n "$CYGWIN" ]; then
+if [ -n "$CYGWIN_" ]; then
     echo "-- Patching problem 1" >> "$LOG_FILE"
 
     # This bit of the Artemis instance script uses a cygpath --unix,
