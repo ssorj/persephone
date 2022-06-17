@@ -64,8 +64,7 @@ if [ -e "$LOG_FILE" ]; then
 fi
 
 assert() {
-    echo asserting: $1
-
+    # Dash doesn't accept "[ ! ! <condition> ]" (double negation)
     if [ $1 ]; then
         :
     else
@@ -180,11 +179,6 @@ echo "== Installing the broker" | tee -a "$LOG_FILE"
 echo
 
 echo "-- Moving the release dir to its install location" >> "$LOG_FILE"
-
-mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
-echo 111
-ls -l `dirname $ARTEMIS_HOME_DIR`
-echo 222
 
 assert "! -e $ARTEMIS_HOME_DIR"
 
