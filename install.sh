@@ -68,7 +68,7 @@ echo
 
 # XXX Check for tee
 
-for tool in curl grep java sed tar uname; do
+for tool in awk curl grep java sed sort tail tar uname; do
     echo "-- Checking for $tool" >> "$LOG_FILE"
 
     if ! command -v "$tool" >> "$LOG_FILE" 2>&1; then
@@ -80,26 +80,37 @@ done
 echo "   Result: OK"
 
 echo
+echo "== Determining the latest version" | tee -a "$LOG_FILE"
+echo
+
+VERSION=`(curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ | \
+          awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' | \
+          sort -t . -k1n -k2n -k3n | \
+          tail -n 1) 2>> "$LOG_FILE"`
+
+echo "   Result: $VERSION"
+
+echo
 echo "== Downloading ActiveMQ Artemis" | tee -a "$LOG_FILE"
 echo
 
 (
     cd "$CACHE_DIR"
 
-    if [ ! -e apache-artemis-2.22.0-bin.tar.gz ]; then
+    if [ ! -e "apache-artemis-$VERSION-bin.tar.gz" ]; then
         echo "-- Fetching the latest release tarball" >> "$LOG_FILE"
 
-        curl --no-progress-meter -fLo apache-artemis-2.22.0-bin.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+        curl --no-progress-meter -fLo "apache-artemis-$VERSION-bin.tar.gz" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$VERSION/apache-artemis-$VERSION-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
     else
         echo "-- Using the cached release tarball" >> "$LOG_FILE"
     fi
 
     echo "-- Extracting files from the tarball " >> "$LOG_FILE"
 
-    tar -xf apache-artemis-2.22.0-bin.tar.gz >> "$LOG_FILE" 2>&1
+    tar -xf "apache-artemis-$VERSION-bin.tar.gz" >> "$LOG_FILE" 2>&1
 
     # XXX We can skip this step
-    mv apache-artemis-2.22.0 dist >> "$LOG_FILE" 2>&1
+    mv "apache-artemis-$VERSION" dist >> "$LOG_FILE" 2>&1
 )
 
 echo "   Result: OK"
