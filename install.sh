@@ -19,11 +19,8 @@
 #
 
 if [ -n "$BASH" ]; then
-    echo 333 This is Bash
     set -Eeuo pipefail
     export POSIXLY_CORRECT=1
-else
-    echo 333 This is not Bash
 fi
 
 CYGWIN_=
@@ -67,11 +64,22 @@ if [ -e "$LOG_FILE" ]; then
 fi
 
 assert() {
-    if [ ! $1 ]; then
+    echo asserting: $1
+
+    if [ $1 ]; then
+        :
+    else
         echo "ASSERTION FAILED! \"$1\"" >> "$LOG_FILE"
         exit 1
     fi
 }
+
+# XXX Logging about what shell we have
+if [ -n "$BASH" ]; then
+    :
+else
+    :
+fi
 
 echo "== Checking for required tools" | tee -a "$LOG_FILE"
 echo
