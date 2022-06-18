@@ -26,9 +26,9 @@ fi
 
 CYGWIN_=
 
-case "`uname`" in
+case "$(uname)" in
     CYGWIN*)
-        HOME=`cygpath --mixed --windows "$HOME"`
+        HOME=$(cygpath --mixed --windows "$HOME")
         CYGWIN_=1
         ;;
 esac
@@ -59,21 +59,17 @@ trap trouble EXIT
 
 if [ -e "$BACKUP_DIR" ]
 then
-    mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
+    mv "$BACKUP_DIR" "$BACKUP_DIR"-$(date +%Y-%m-%d-%H-%m-%S) >> "$LOG_FILE" 2>&1
 fi
 
 if [ -e "$LOG_FILE" ]
 then
-    mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
+    mv "$LOG_FILE" "$LOG_FILE"-$(date +%Y-%m-%d-%H-%m-%S) >> "$LOG_FILE" 2>&1
 fi
 
 assert() {
-    # Dash doesn't accept "[ ! ! <condition> ]" (double negation)
-    # XXX Try putting the ! before the open brace
-    if [ $1 ]
+    if ! [ $1 ]
     then
-        :
-    else
         echo "ASSERTION FAILED! \"$1\"" >> "$LOG_FILE"
         exit 1
     fi
@@ -102,16 +98,18 @@ for tool in awk curl grep java sed sort tail tar uname; do
     fi
 done
 
+# XXX Check the network
+
 echo "   Result: OK"
 echo
 
 echo "== Determining the latest version" | tee -a "$LOG_FILE"
 echo
 
-VERSION=`(curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
-          | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
-          | sort -t . -k1n -k2n -k3n \
-          | tail -n 1) 2>> "$LOG_FILE"`
+VERSION=$( (curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+            | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
+            | sort -t . -k1n -k2n -k3n \
+            | tail -n 1) 2>> "$LOG_FILE" )
 
 echo "   Result: $VERSION"
 echo
@@ -126,27 +124,16 @@ if [ ! -e "$RELEASE_ARCHIVE" ]
 then
     echo "-- Fetching the latest release archive" >> "$LOG_FILE"
 
-    curl --no-progress-meter -fLo "$CACHE_DIR/apache-artemis-$VERSION-bin.tar.gz" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$VERSION/apache-artemis-$VERSION-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+    # XXX Want a way to log command *and* run it
+
+    curl --no-progress-meter -fLo "$RELEASE_ARCHIVE" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$VERSION/apache-artemis-$VERSION-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
+
+    echo "Fetched $RELEASE_FILE"
 else
-    echo "-- Using the cached release archive" >> "$LOG_FILE"
+    echo "Using the cached release archive" >> "$LOG_FILE"
 fi
 
-# XXX Consider:
-#
-# - Avoid --force-local by using absolute cygwin unixy paths
-
-# XXX This is alleged to work on Solaris:
-#
-# gzip -dc < the.tar.gz | (cd /path/to/extraction/point && tar xvf -)
-
-# XXX Broadly, adding --posix if I can will help.  I can! export POSIXLY_CORRECT=something.
-
-if [ "$CYGWIN_" ]
-then
-    tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" --force-local >> "$LOG_FILE" 2>&1
-else
-    tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
-fi
+gzip -dc "$RELEASE_ARCHIVE" | (cd /tmp && tar xvf -)
 
 assert "-d $RELEASE_DIR"
 
@@ -196,7 +183,7 @@ echo "-- Moving the release dir to its install location" >> "$LOG_FILE"
 
 assert "! -e $ARTEMIS_HOME_DIR"
 
-mkdir -p `dirname "$ARTEMIS_HOME_DIR"`
+mkdir -p $(dirname "$ARTEMIS_HOME_DIR")
 mv "$RELEASE_DIR" "$ARTEMIS_HOME_DIR"
 
 echo "-- Burning the Artemis home dir into the admin script" >> "$LOG_FILE"
@@ -236,6 +223,8 @@ then
     # current drive is different from the Artemis install drive, trouble.
     #
     # For the bug: Annotate the current code.  Suggest --absolute.
+
+    # XXX Try patching for --absolute instead
 
     sed -i.backup2 "77,82d" "$ARTEMIS_INSTANCE_DIR/bin/artemis"
 
@@ -286,9 +275,9 @@ echo "-- Testing the server" >> "$LOG_FILE"
 
 if command -v lsof > /dev/null 2>&1
 then
-    end=100
+    i=100
 
-    while [ $end -gt 0 ]
+    while [ $i -gt 0 ]
     do
         if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null
         then
@@ -296,6 +285,8 @@ then
         fi
 
         sleep 2
+
+        i=$(($i - 1))
     done
 else
     sleep 30
@@ -306,7 +297,7 @@ fi
 # The 'artemis-service stop' command times out too quickly for CI, so
 # I take an alternate approach.
 
-kill `cat "$ARTEMIS_INSTANCE_DIR/data/artemis.pid"` >> "$LOG_FILE" 2>&1
+kill $(cat "$ARTEMIS_INSTANCE_DIR/data/artemis.pid") >> "$LOG_FILE" 2>&1
 
 echo "   Result: OK"
 echo
