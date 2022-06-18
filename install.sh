@@ -54,7 +54,7 @@ mkdir -p "${cache_dir}"
 
 trouble() {
     # shellcheck disable=SC2181 # This is intentionally indirect
-    if [ $? = 0 ]
+    if [ $? != 0 ]
     then
         echo
         echo "TROUBLE! Things didn't go to plan. Here's the log:"
@@ -77,9 +77,10 @@ then
 fi
 
 assert() {
-    if ! [ $1 ]
+    # XXX shellcheck disableXXX=SC2086,SC2244 # I want the word splitting
+    if ! [ "$@" ]
     then
-        echo "ASSERTION FAILED! \"${1}\"" >> "${log_file}"
+        echo "ASSERTION FAILED: \"${@}\"" >> "${log_file}"
         exit 1
     fi
 }
@@ -146,7 +147,7 @@ fi
 
 gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
-assert "-d ${release_dir}"
+assert -d "${release_dir}"
 
 echo "   Result: OK"
 echo
@@ -180,7 +181,7 @@ then
         mv "${artemis_instance_dir}" "${backup_dir}/state" >> "${log_file}" 2>&1
     fi
 
-    assert "-d ${backup_dir}"
+    assert -d "${backup_dir}"
 
     echo "   Result: OK"
     echo "   Backup: ${backup_dir}"
@@ -192,7 +193,7 @@ echo
 
 echo "-- Moving the release dir to its install location" >> "${log_file}"
 
-assert "! -e ${artemis_home_dir}"
+assert ! -e "${artemis_home_dir}"
 
 mkdir -p "$(dirname "${artemis_home_dir}")"
 mv "${release_dir}" "${artemis_home_dir}"

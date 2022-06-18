@@ -3,14 +3,14 @@ def test(app):
     check_program("dash")
     check_program("bash")
 
-    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
+    # remove(join(get_home_dir(), ".cache", "artemis-install-script"))
 
     run("dash uninstall.sh")
     run("dash uninstall.sh")
     run("dash install.sh")
     run("dash install.sh")
 
-    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
+    # remove(join(get_home_dir(), ".cache", "artemis-install-script"))
 
     run("bash uninstall.sh")
     run("bash uninstall.sh")
@@ -24,6 +24,13 @@ def lint(app):
     run("shellcheck --enable all install.sh")
 
 @command
-def debug(app, shell="dash"):
+def debug(app, shell="bash"):
     check_program(shell)
+
+    if shell == "bash":
+        # https://wiki.bash-hackers.org/scripting/debuggingtips
+        # export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+        ENV["PS4"] = "\033[0;33m${BASH_SOURCE}:${LINENO}:\033[0m ${FUNCNAME[0]:+${FUNCNAME[0]}(): }"
+        run("bash -x install.sh")
+
     run(f"{shell} -vx install.sh")
