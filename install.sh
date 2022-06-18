@@ -18,7 +18,8 @@
 # under the License.
 #
 
-if [ -n "$BASH" ]; then
+if [ -n "$BASH" ]
+then
     set -Eeuo pipefail
     export POSIXLY_CORRECT=1
 fi
@@ -44,7 +45,8 @@ LOG_FILE="$CACHE_DIR/install.log"
 mkdir -p "$CACHE_DIR"
 
 trouble() {
-    if [ "$?" != 0 ]; then
+    if [ "$?" != 0 ]
+    then
         echo
         echo "TROUBLE! Things didn't go to plan. Here's the log:"
         echo
@@ -55,17 +57,21 @@ trouble() {
 
 trap trouble EXIT
 
-if [ -e "$BACKUP_DIR" ]; then
+if [ -e "$BACKUP_DIR" ]
+then
     mv "$BACKUP_DIR" "$BACKUP_DIR"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
 fi
 
-if [ -e "$LOG_FILE" ]; then
+if [ -e "$LOG_FILE" ]
+then
     mv "$LOG_FILE" "$LOG_FILE"-`date +%Y-%m-%d-%H-%m-%S` >> "$LOG_FILE" 2>&1
 fi
 
 assert() {
     # Dash doesn't accept "[ ! ! <condition> ]" (double negation)
-    if [ $1 ]; then
+    # XXX Try putting the ! before the open brace
+    if [ $1 ]
+    then
         :
     else
         echo "ASSERTION FAILED! \"$1\"" >> "$LOG_FILE"
@@ -74,7 +80,8 @@ assert() {
 }
 
 # XXX Logging about what shell we have
-if [ -n "$BASH" ]; then
+if [ -n "$BASH" ]
+then
     :
 else
     :
@@ -88,7 +95,8 @@ echo
 for tool in awk curl grep java sed sort tail tar uname; do
     echo "-- Checking for $tool" >> "$LOG_FILE"
 
-    if ! command -v "$tool" >> "$LOG_FILE" 2>&1; then
+    if ! command -v "$tool" >> "$LOG_FILE" 2>&1
+    then
         echo "ERROR: Required tool $tool is not available" | tee -a "$LOG_FILE"
         exit 1
     fi
@@ -114,7 +122,8 @@ echo
 RELEASE_ARCHIVE="$CACHE_DIR/apache-artemis-$VERSION-bin.tar.gz"
 RELEASE_DIR="$CACHE_DIR/apache-artemis-$VERSION"
 
-if [ ! -e "$RELEASE_ARCHIVE" ]; then
+if [ ! -e "$RELEASE_ARCHIVE" ]
+then
     echo "-- Fetching the latest release archive" >> "$LOG_FILE"
 
     curl --no-progress-meter -fLo "$CACHE_DIR/apache-artemis-$VERSION-bin.tar.gz" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$VERSION/apache-artemis-$VERSION-bin.tar.gz&action=download" >> "$LOG_FILE" 2>&1
@@ -132,7 +141,8 @@ fi
 
 # XXX Broadly, adding --posix if I can will help.  I can! export POSIXLY_CORRECT=something.
 
-if [ "$CYGWIN_" ]; then
+if [ "$CYGWIN_" ]
+then
     tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" --force-local >> "$LOG_FILE" 2>&1
 else
     tar -C "$CACHE_DIR" -xf "$RELEASE_ARCHIVE" >> "$LOG_FILE" 2>&1
@@ -143,27 +153,31 @@ assert "-d $RELEASE_DIR"
 echo "   Result: OK"
 echo
 
-if [ -e "$ARTEMIS_CONFIG_DIR" -o -e "$ARTEMIS_HOME_DIR" -o -e "$ARTEMIS_INSTANCE_DIR" ]; then
+if [ -e "$ARTEMIS_CONFIG_DIR" -o -e "$ARTEMIS_HOME_DIR" -o -e "$ARTEMIS_INSTANCE_DIR" ]
+then
     echo "== Saving the existing installation to a backup" | tee -a "$LOG_FILE"
     echo
 
     echo "-- Saving the previous config dir" >> "$LOG_FILE"
 
-    if [ -e "$ARTEMIS_CONFIG_DIR" ]; then
+    if [ -e "$ARTEMIS_CONFIG_DIR" ]
+    then
         mkdir -p "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
         mv "$ARTEMIS_CONFIG_DIR" "$BACKUP_DIR/config" >> "$LOG_FILE" 2>&1
     fi
 
     echo "-- Saving the previous dist dir" >> "$LOG_FILE"
 
-    if [ -e "$ARTEMIS_HOME_DIR" ]; then
+    if [ -e "$ARTEMIS_HOME_DIR" ]
+    then
         mkdir -p "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
         mv "$ARTEMIS_HOME_DIR" "$BACKUP_DIR/share" >> "$LOG_FILE" 2>&1
     fi
 
     echo "-- Saving the previous instance dir" >> "$LOG_FILE"
 
-    if [ -e "$ARTEMIS_INSTANCE_DIR" ]; then
+    if [ -e "$ARTEMIS_INSTANCE_DIR" ]
+    then
         mkdir -p "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
         mv "$ARTEMIS_INSTANCE_DIR" "$BACKUP_DIR/state" >> "$LOG_FILE" 2>&1
     fi
@@ -212,7 +226,8 @@ sed -i.backup "18a\\
 ARTEMIS_INSTANCE=$ARTEMIS_INSTANCE_DIR
 " "$ARTEMIS_INSTANCE_DIR/bin/artemis-service" >> "$LOG_FILE" 2>&1
 
-if [ -n "$CYGWIN_" ]; then
+if [ -n "$CYGWIN_" ]
+then
     echo "-- Patching problem 1" >> "$LOG_FILE"
 
     # This bit of the Artemis instance script uses a cygpath --unix,
@@ -252,11 +267,13 @@ echo "-- Testing the artemis command" >> "$LOG_FILE"
 
 "$BIN_DIR/artemis" version >> "$LOG_FILE" 2>&1
 
-if command -v lsof > /dev/null 2>&1; then
+if command -v lsof > /dev/null 2>&1
+then
     echo "-- Checking that the required ports are available" >> "$LOG_FILE"
 
     for port in 61616 5672 61613 1883 8161; do
-        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null; then
+        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep "$port" > /dev/null
+        then
             echo "ERROR: Required port $port is in use by something else" >> "$LOG_FILE"
             exit 1
         fi
@@ -267,12 +284,14 @@ echo "-- Testing the server" >> "$LOG_FILE"
 
 "$BIN_DIR/artemis-service" start >> "$LOG_FILE" 2>&1
 
-if command -v lsof > /dev/null 2>&1; then
+if command -v lsof > /dev/null 2>&1
+then
     end=100
 
-    while [ $x -gt 0 ]
+    while [ $end -gt 0 ]
     do
-        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
+        if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null
+        then
             break;
         fi
 
