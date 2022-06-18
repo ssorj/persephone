@@ -21,7 +21,7 @@ def test(app):
 def lint(app):
     check_program("shellcheck")
 
-    run("shellcheck install.sh")
+    run("shellcheck --enable all install.sh")
 
 @command
 def debug(app, shell="dash"):

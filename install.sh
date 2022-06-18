@@ -27,12 +27,12 @@ then
     export POSIXLY_CORRECT=1
 fi
 
-cygwin=
-
 case "$(uname)" in
     CYGWIN*)
         HOME="$(cygpath --mixed --windows "${HOME}")"
         cygwin=1
+        ;;
+    *)
         ;;
 esac
 
@@ -72,9 +72,9 @@ then
 fi
 
 assert() {
-    if ! [ "$1" ]
+    if ! [ $1 ]
     then
-        echo "ASSERTION FAILED! \"$1\"" >> "${log_file}"
+        echo "ASSERTION FAILED! \"${1}\"" >> "${log_file}"
         exit 1
     fi
 }
@@ -117,14 +117,14 @@ version="$( (curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/acti
              | sort -t . -k1n -k2n -k3n \
              | tail -n 1) 2>> "${log_file}" )"
 
-echo "   Result: $version"
+echo "   Result: ${version}"
 echo
 
 echo "== Downloading the release archive" | tee -a "${log_file}"
 echo
 
-release_archive="${cache_dir}/apache-artemis-$version-bin.tar.gz"
-release_dir="${cache_dir}/apache-artemis-$version"
+release_archive="${cache_dir}/apache-artemis-${version}-bin.tar.gz"
+release_dir="${cache_dir}/apache-artemis-${version}"
 
 if [ ! -e "${release_archive}" ]
 then
@@ -132,7 +132,7 @@ then
 
     # XXX Want a way to log command *and* run it
 
-    curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$version/apache-artemis-$version-bin.tar.gz&action=download" >> "${log_file}" 2>&1
+    curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download" >> "${log_file}" 2>&1
 
     echo "Fetched ${release_archive}" >> "${log_file}"
 else
@@ -219,7 +219,7 @@ sed -i.backup "18a\\
 ARTEMIS_INSTANCE=${artemis_instance_dir}
 " "${artemis_instance_dir}/bin/artemis-service" >> "${log_file}" 2>&1
 
-if [ -n "$cygwin" ]
+if [ -n "${cygwin:-}" ]
 then
     echo "-- Patching problem 1" >> "${log_file}"
 
@@ -239,6 +239,7 @@ then
     # And this bit replaces a colon with a semicolon in the
     # bootclasspath.  Windows requires a semicolon.
 
+    # shellcheck disable=SC2016 # I don't want these expanded
     sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
 fi
 
@@ -267,9 +268,9 @@ then
     echo "-- Checking that the required ports are available" >> "${log_file}"
 
     for port in 61616 5672 61613 1883 8161; do
-        if lsof -PiTCP -sTCP:LISTEN 2>> "${log_file}" | grep "$port" > /dev/null
+        if lsof -PiTCP -sTCP:LISTEN 2>> "${log_file}" | grep "${port}" > /dev/null
         then
-            echo "ERROR: Required port $port is in use by something else" >> "${log_file}"
+            echo "ERROR: Required port ${port} is in use by something else" >> "${log_file}"
             exit 1
         fi
     done
@@ -283,7 +284,7 @@ if command -v lsof > /dev/null 2>&1
 then
     i=100
 
-    while [ "$i" -gt 0 ]
+    while [ "${i}" -gt 0 ]
     do
         if lsof -PiTCP -sTCP:LISTEN 2>> "${log_file}" | grep 61616 > /dev/null
         then
