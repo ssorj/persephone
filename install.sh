@@ -18,12 +18,17 @@
 # under the License.
 #
 
-set -eu
+# No clobber, exit on error, and fail on unbound variables
+set -Ceu
 
 if [ -n "${BASH:-}" ]
 then
+    # Inherit traps and fail fast in pipes
+    #
     # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
     set -Eo pipefail
+
+    # Keep me on the straight and narrow
     export POSIXLY_CORRECT=1
 fi
 
