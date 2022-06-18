@@ -1,16 +1,21 @@
 @command
 def test(app):
-    # run("sh --posix uninstall.sh")
-    # run("sh --posix uninstall.sh")
-    # run("sh --posix install.sh")
-    # run("sh --posix install.sh")
-
     check_program("dash")
+    check_program("bash")
+
+    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
 
     run("dash uninstall.sh")
     run("dash uninstall.sh")
     run("dash install.sh")
     run("dash install.sh")
+
+    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
+
+    run("bash uninstall.sh")
+    run("bash uninstall.sh")
+    run("bash install.sh")
+    run("bash install.sh")
 
 @command
 def debug(app, shell="dash"):

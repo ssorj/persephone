@@ -130,7 +130,7 @@ then
 
     curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/$version/apache-artemis-$version-bin.tar.gz&action=download" >> "${log_file}" 2>&1
 
-    echo "Fetched ${release_file}"
+    echo "Fetched ${release_archive}" >> "${log_file}"
 else
     echo "Using the cached release archive" >> "${log_file}"
 fi
