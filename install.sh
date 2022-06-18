@@ -268,7 +268,10 @@ echo "-- Testing the server" >> "$LOG_FILE"
 "$BIN_DIR/artemis-service" start >> "$LOG_FILE" 2>&1
 
 if command -v lsof > /dev/null 2>&1; then
-    for i in `seq 15`; do
+    end=100
+
+    while [ $x -gt 0 ]
+    do
         if lsof -PiTCP -sTCP:LISTEN 2>> "$LOG_FILE" | grep 61616 > /dev/null; then
             break;
         fi
