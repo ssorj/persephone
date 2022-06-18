@@ -11,3 +11,8 @@ def test(app):
     run("dash uninstall.sh")
     run("dash install.sh")
     run("dash install.sh")
+
+@command
+def debug(app, shell="dash"):
+    check_program(shell)
+    run(f"{shell} -vx install.sh")
