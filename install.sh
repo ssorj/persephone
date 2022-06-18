@@ -18,9 +18,12 @@
 # under the License.
 #
 
-if [ -n "${BASH}" ]
+set -eu
+
+if [ -n "${BASH:-}" ]
 then
-    set -Eeuo pipefail
+    # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
+    set -Eo pipefail
     export POSIXLY_CORRECT=1
 fi
 
@@ -45,7 +48,8 @@ log_file="${cache_dir}/install.log"
 mkdir -p "${cache_dir}"
 
 trouble() {
-    if [ $? != 0 ]
+    # shellcheck disable=SC2181 # This is intentionally indirect
+    if [ $? = 0 ]
     then
         echo
         echo "TROUBLE! Things didn't go to plan. Here's the log:"
@@ -64,24 +68,24 @@ fi
 
 if [ -e "${log_file}" ]
 then
-    mv "${log_file}" "${log_file}-$(date +%Y-%m-%d-%H-%m-%S)" >> "${log_file}" 2>&1
+    mv "${log_file}" "${log_file}-$(date +%Y-%m-%d-%H-%m-%S)"
 fi
 
 assert() {
-    if ! [ $1 ]
+    if ! [ "$1" ]
     then
         echo "ASSERTION FAILED! \"$1\"" >> "${log_file}"
         exit 1
     fi
 }
 
-# XXX Logging about what shell we have
-if [ -n "$BASH" ]
-then
-    :
-else
-    :
-fi
+# # XXX Logging about what shell we have
+# if [ -n "$BASH" ]
+# then
+#     :
+# else
+#     :
+# fi
 
 echo "== Checking for required tools" | tee -a "${log_file}"
 echo
@@ -89,11 +93,11 @@ echo
 # XXX Check for tee
 
 for tool in awk curl grep java sed sort tail tar uname; do
-    echo "-- Checking for $tool" >> "${log_file}"
+    echo "-- Checking for ${tool}" >> "${log_file}"
 
-    if ! command -v "$tool" >> "${log_file}" 2>&1
+    if ! command -v "${tool}" >> "${log_file}" 2>&1
     then
-        echo "ERROR: Required tool $tool is not available" | tee -a "${log_file}"
+        echo "ERROR: Required tool ${tool} is not available" | tee -a "${log_file}"
         exit 1
     fi
 done
@@ -111,7 +115,7 @@ echo
 version="$( (curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
              | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
              | sort -t . -k1n -k2n -k3n \
-             | tail -n 1) 2>> ${log_file} )"
+             | tail -n 1) 2>> "${log_file}" )"
 
 echo "   Result: $version"
 echo
@@ -142,7 +146,7 @@ assert "-d ${release_dir}"
 echo "   Result: OK"
 echo
 
-if [ -e "${artemis_config_dir}" -o -e "${artemis_home_dir}" -o -e "${artemis_instance_dir}" ]
+if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
 then
     echo "== Saving the existing installation to a backup" | tee -a "${log_file}"
     echo
@@ -244,8 +248,8 @@ echo "-- Creating symlinks to the scripts" >> "${log_file}"
     mkdir -p "${bin_dir}"
     cd "${bin_dir}"
 
-    ln -sf "${artemis_instance_dir}/bin/artemis"
-    ln -sf "${artemis_instance_dir}/bin/artemis-service"
+    ln -sf "${artemis_instance_dir}/bin/artemis" .
+    ln -sf "${artemis_instance_dir}/bin/artemis-service" .
 )
 
 echo "   Result: OK"
@@ -288,7 +292,7 @@ then
 
         sleep 2
 
-        i=$(($i - 1))
+        i=$((i - 1))
     done
 else
     sleep 30

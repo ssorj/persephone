@@ -18,6 +18,12 @@ def test(app):
     run("bash install.sh")
 
 @command
+def lint(app):
+    check_program("shellcheck")
+
+    run("shellcheck install.sh")
+
+@command
 def debug(app, shell="dash"):
     check_program(shell)
     run(f"{shell} -vx install.sh")
