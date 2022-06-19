@@ -10,22 +10,24 @@ jobs:
     steps:
       - run: git config --global core.autocrlf input
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
       - uses: actions/setup-java@v3
         with:
           distribution: "temurin"
           java-version: "17"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
       - uses: cygwin/cygwin-install-action@master
       - run: ./plano big-test
-        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
+        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       - run: cat ~/.cache/artemis-install-script/install.log
-        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr '{0}'
+        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
   fedora:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
       - uses: actions/checkout@v3
-      - run: dnf -y install coreutils curl gawk grep lsof sed tar which java-17-openjdk-headless
+      - run: dnf -y install coreutils curl gawk grep lsof python sed tar which java-17-openjdk-headless
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
   macos:
@@ -36,6 +38,9 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "17"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
   ubuntu:
@@ -44,6 +49,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
-      - run: apt-get -qq install coreutils curl grep lsof mawk sed tar openjdk-17-jre-headless
+      - run: apt-get -qq install coreutils curl grep lsof mawk python sed tar openjdk-17-jre-headless
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
