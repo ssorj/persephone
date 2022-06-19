@@ -27,7 +27,7 @@ jobs:
     container: fedora:latest
     steps:
       - uses: actions/checkout@v3
-      - run: dnf -y install coreutils curl dash gawk grep lsof python sed tar which java-17-openjdk-headless
+      - run: dnf -y install coreutils curl dash gawk grep ksh lsof python sed tar which java-17-openjdk-headless
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
   macos:
@@ -49,6 +49,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
-      - run: apt-get -qq install coreutils curl grep lsof mawk python3 sed tar openjdk-17-jre-headless
+      - run: apt-get -qq install coreutils curl grep ksh lsof mawk python3 sed tar openjdk-17-jre-headless
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log

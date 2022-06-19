@@ -1,31 +1,24 @@
 @command
-def test(app):
-    run("sh install.sh")
-    run("sh uninstall.sh")
+def test(app, shell="sh"):
+    run(f"{shell} uninstall.sh")
+
+    run(f"{shell} install.sh") # No backup
+    run(f"{shell} install.sh") # Creates a backup
+    run(f"{shell} install.sh") # Backs up the backup
+
+    run(f"{shell} uninstall.sh") # No backup
+    run(f"{shell} uninstall.sh") # Creates a backup
+    run(f"{shell} uninstall.sh") # Backs up the backup
 
 @command
 def big_test(app):
     test(app)
 
-    if which("dash"):
-        run("dash uninstall.sh")
-        run("dash install.sh")
+    for shell in "bash", "dash", "ksh":
+        if not which(shell):
+            continue
 
-        run("dash install.sh")   # Creates a backup
-        run("dash install.sh")   # Backs up the backup
-        run("dash uninstall.sh") # No backup
-        run("dash uninstall.sh") # Creates a backup
-        run("dash uninstall.sh") # Backs up the backup
-
-    if which("bash"):
-        run("bash uninstall.sh")
-        run("bash install.sh")
-
-        run("bash install.sh")   # Creates a backup
-        run("bash install.sh")   # Backs up the backup
-        run("bash uninstall.sh") # No backup
-        run("bash uninstall.sh") # Creates a backup
-        run("bash uninstall.sh") # Backs up the backup
+        test(app, shell=shell)
 
 @command
 def lint(app):
