@@ -1,37 +1,36 @@
 @command
-def test(app, shell="sh"):
+def test(app, shell="sh", debug=False):
     check_program(shell)
 
+    if debug:
+        ENV["DEBUG"] = "1"
+
+    run(f"{shell} install.sh")
     run(f"{shell} uninstall.sh")
 
-    run(f"{shell} install.sh") # No backup
-    run(f"{shell} install.sh") # Creates a backup
-    run(f"{shell} install.sh") # Backs up the backup
-
-    run(f"{shell} uninstall.sh") # No backup
-    run(f"{shell} uninstall.sh") # Creates a backup
-    run(f"{shell} uninstall.sh") # Backs up the backup
-
 @command
-def big_test(app):
-    with working_env(DEBUG=1):
-        test(app)
+def big_test(app, debug=False):
+    test(app, debug=debug)
+
+    if debug:
+        ENV["DEBUG"] = "1"
 
     for shell in "bash", "dash", "ksh":
         if not which(shell):
             continue
 
-        test(app, shell=shell)
+        run(f"{shell} uninstall.sh") # No existing installation
+
+        run(f"{shell} install.sh") # No existing installation and no existing backup
+        run(f"{shell} install.sh") # Creates a backup
+        run(f"{shell} install.sh") # Backs up the backup
+
+        run(f"{shell} uninstall.sh") # No existing backup
+        run(f"{shell} uninstall.sh") # Creates a backup
+        run(f"{shell} uninstall.sh") # Backs up the backup
 
 @command
 def lint(app):
     check_program("shellcheck")
 
     run("shellcheck --enable all install.sh")
-
-@command
-def debug(app, shell="bash"):
-    check_program(shell)
-
-    with working_env(DEBUG=1):
-        run(f"{shell} -vx install.sh")

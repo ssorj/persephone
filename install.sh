@@ -109,6 +109,8 @@ check_program() {
     fi
 }
 
+# XXX This goes in init_script?
+
 handle_exit() {
     # shellcheck disable=SC2181 # This is intentionally indirect
     if [ $? != 0 ]

@@ -18,6 +18,8 @@ jobs:
         with:
           python-version: "3.x"
       - uses: cygwin/cygwin-install-action@master
+      - run: python plano test --verbose
+        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       - run: python plano big-test
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       - run: cat ~/.cache/artemis-install-script/install.log
@@ -28,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: dnf -y install coreutils curl dash gawk grep ksh lsof python sed tar which java-17-openjdk-headless
+      - run: ./plano test --verbose
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
   macos:
@@ -41,6 +44,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.x"
+      - run: ./plano test --verbose
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
   ubuntu:
@@ -50,5 +54,6 @@ jobs:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
       - run: apt-get -qq install coreutils curl grep ksh lsof mawk python3 sed tar openjdk-17-jre-headless
+      - run: ./plano test --verbose
       - run: ./plano big-test
       - run: cat ~/.cache/artemis-install-script/install.log
