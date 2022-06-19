@@ -12,17 +12,23 @@ def big_test(app):
 
     remove(join(get_home_dir(), ".cache", "artemis-install-script"))
 
-    run("dash install.sh")
-    run("dash install.sh")
     run("dash uninstall.sh")
-    run("dash uninstall.sh")
+    run("dash install.sh")
 
-    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
+    run("dash install.sh")   # Creates a backup
+    run("dash install.sh")   # Backs up the backup
+    run("dash uninstall.sh") # No backup
+    run("dash uninstall.sh") # Creates a backup
+    run("dash uninstall.sh") # Backs up the backup
 
-    run("bash install.sh")
-    run("bash install.sh")
     run("bash uninstall.sh")
-    run("bash uninstall.sh")
+    run("bash install.sh")
+
+    run("bash install.sh")   # Creates a backup
+    run("bash install.sh")   # Backs up the backup
+    run("bash uninstall.sh") # No backup
+    run("bash uninstall.sh") # Creates a backup
+    run("bash uninstall.sh") # Backs up the backup
 
 @command
 def lint(app):
