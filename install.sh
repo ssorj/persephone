@@ -188,7 +188,7 @@ main() {
 
     if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
     then
-        print_section "Saving the existing installation to a backup" | tee -a "${log_file}"
+        print_section "Saving the existing installation to a backup"
 
         {
             log "Saving the previous config dir"
