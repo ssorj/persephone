@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:ssorj/plano.git
+	branch = main
+	commit = 2e0f4cbeb25db9d4ac689fe45a0dc95dda5eda6e
+	parent = 4c92a05feb859bf99a04101ade2e214f3a586715
+	method = merge
+	cmdver = 0.4.3
