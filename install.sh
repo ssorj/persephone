@@ -67,6 +67,11 @@ init_script() {
     log_file="${script_dir}/install.log"
 
     mkdir -p "${script_dir}"
+
+    if [ -e "${log_file}" ]
+    then
+        mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$$"
+    fi
 }
 
 assert() {
@@ -91,6 +96,17 @@ print_section() {
 print_result() {
     echo "   Result: ${1}"
     echo
+}
+
+check_program() {
+    log "Checking for ${1}"
+
+    if ! command -v "${1}" >> "${log_file}" 2>&1
+    then
+        echo "ERROR: Required program ${tool} is not available"
+        log "ERROR: Required program ${tool} is not available" # XXX
+        exit 1
+    fi
 }
 
 handle_exit() {
@@ -118,63 +134,55 @@ main() {
 
     if [ -e "${artemis_backup_dir}" ]
     then
-        mv "${artemis_backup_dir}" "${artemis_backup_dir}-$(date +%Y-%m-%d-%H-%m-%S)" >> "${log_file}" 2>&1
-    fi
-
-    # XXX Move this to init_script
-    if [ -e "${log_file}" ]
-    then
-        mv "${log_file}" "${log_file}-$(date +%Y-%m-%d-%H-%m-%S)"
+        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >> "${log_file}" 2>&1
     fi
 
     print_section "Checking for required tools"
 
-    for tool in awk curl grep java sed sort tail tar uname; do
-        log "Checking for ${tool}"
-
-        if ! command -v "${tool}" >> "${log_file}" 2>&1
-        then
-            echo "ERROR: Required tool ${tool} is not available"
-            log "ERROR: Required tool ${tool} is not available" # XXX
-            exit 1
-        fi
+    for program in awk curl grep java sed sort tail tar uname; do
+        check_program "${program}"
     done
 
     print_result "OK"
 
+    # XXX Check for needed free ports here, and if they aren't free,
+    # propose freeing them or running the script with the precondition
+    # and related testing skipped
+
     print_section "Determining the latest version"
 
-    # XXX I wonder if there's a cleaner way to achieve this
+    {
+        version="$(curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+                   | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
+                   | sort -t . -k1n -k2n -k3n \
+                   | tail -n 1)"
+    } >> "${log_file}" 2>&1
 
-    version="$( (curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
-                 | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
-                 | sort -t . -k1n -k2n -k3n \
-                 | tail -n 1) 2>> "${log_file}" )"
+    print_result "${version}"
 
-    echo "   Result: ${version}"
-    echo
+    print_section "Fetching the release archive"
 
-    print_section "Downloading the release archive"
+    {
+        release_archive="${script_dir}/apache-artemis-${version}-bin.tar.gz"
+        release_dir="${script_dir}/apache-artemis-${version}"
 
-    release_archive="${script_dir}/apache-artemis-${version}-bin.tar.gz"
-    release_dir="${script_dir}/apache-artemis-${version}"
+        if [ ! -e "${release_archive}" ]
+        then
+            log "Downloading the latest release archive"
 
-    if [ ! -e "${release_archive}" ]
-    then
-        log "Fetching the latest release archive"
+            # XXX Want a way to log command *and* run it
 
-        # XXX Want a way to log command *and* run it
+            curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download"
 
-        curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download" >> "${log_file}" 2>&1
+            log "Downloaded ${release_archive}"
+        else
+            log "Using the cached release archive"
+        fi
 
-        echo "Fetched ${release_archive}" >> "${log_file}"
-    else
-        echo "Using the cached release archive" >> "${log_file}"
-    fi
+        gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
-    gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
-
-    assert -d "${release_dir}"
+        assert -d "${release_dir}"
+    } >> "${log_file}" 2>&1
 
     print_result "OK"
 
@@ -210,132 +218,136 @@ main() {
             assert -d "${artemis_backup_dir}"
         } >> "${log_file}" 2>&1
 
-        echo "   Result: OK"
-        echo "   Backup: ${artemis_backup_dir}"
-        echo
+        print_result "${artemis_backup_dir}"
     fi
 
     print_section "Installing the broker"
 
-    log "Moving the release dir to its install location"
+    {
+        log "Moving the release dir to its install location"
 
-    assert ! -e "${artemis_home_dir}"
+        assert ! -e "${artemis_home_dir}"
 
-    mkdir -p "$(dirname "${artemis_home_dir}")"
-    mv "${release_dir}" "${artemis_home_dir}"
+        mkdir -p "$(dirname "${artemis_home_dir}")"
+        mv "${release_dir}" "${artemis_home_dir}"
 
-    log "Burning the Artemis home dir into the admin script"
+        log "Burning the Artemis home dir into the admin script"
 
-    sed -i.backup "18a\\
-    ARTEMIS_HOME=${artemis_home_dir}
-    " "${artemis_home_dir}/bin/artemis" >> "${log_file}" 2>&1
+        sed -i.backup "18a\\
+ARTEMIS_HOME=${artemis_home_dir}
+" "${artemis_home_dir}/bin/artemis"
 
-    log "Creating the broker instance"
+        log "Creating the broker instance"
 
-    "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
-                                    --user example --password example \
-                                    --host localhost --allow-anonymous \
-                                    --no-autotune \
-                                    --no-hornetq-acceptor \
-                                    --etc "${artemis_config_dir}" \
-                                    --verbose \
-                                    >> "${log_file}" 2>&1
+        "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
+                                        --user example --password example \
+                                        --host localhost --allow-anonymous \
+                                        --no-autotune \
+                                        --no-hornetq-acceptor \
+                                        --etc "${artemis_config_dir}" \
+                                        --verbose
 
-    log "Burning the instance dir into the instance scripts"
+        log "Burning the instance dir into the instance scripts"
 
-    sed -i.backup "18a\\
-    ARTEMIS_INSTANCE=${artemis_instance_dir}
-    " "${artemis_instance_dir}/bin/artemis" >> "${log_file}" 2>&1
+        sed -i.backup "18a\\
+ARTEMIS_INSTANCE=${artemis_instance_dir}
+" "${artemis_instance_dir}/bin/artemis"
 
-    sed -i.backup "18a\\
-    ARTEMIS_INSTANCE=${artemis_instance_dir}
-    " "${artemis_instance_dir}/bin/artemis-service" >> "${log_file}" 2>&1
+        sed -i.backup "18a\\
+ARTEMIS_INSTANCE=${artemis_instance_dir}
+" "${artemis_instance_dir}/bin/artemis-service"
 
-    if [ -n "${cygwin:-}" ]
-    then
-        log "Patching problem 1"
+        # if [ -n "${cygwin:-}" ]
+        # then
+        #     log "Patching problem 1"
 
-        # This bit of the Artemis instance script uses a cygpath --unix,
-        # cygpath --windows sequence that ends up stripping out the drive
-        # letter and replacing it with whatever the current drive is. If your
-        # current drive is different from the Artemis install drive, trouble.
-        #
-        # For the bug: Annotate the current code.  Suggest --absolute.
+        #     # This bit of the Artemis instance script uses a cygpath --unix,
+        #     # cygpath --windows sequence that ends up stripping out the drive
+        #     # letter and replacing it with whatever the current drive is. If your
+        #     # current drive is different from the Artemis install drive, trouble.
+        #     #
+        #     # For the bug: Annotate the current code.  Suggest --absolute.
 
-        # XXX Try patching for --absolute instead
+        #     # XXX Try patching for --absolute instead
 
-        sed -i.backup2 "77,82d" "${artemis_instance_dir}/bin/artemis"
+        #     sed -i.backup2 "77,82d" "${artemis_instance_dir}/bin/artemis"
 
-        log "Patching problem 2"
+        #     log "Patching problem 2"
 
-        # And this bit replaces a colon with a semicolon in the
-        # bootclasspath.  Windows requires a semicolon.
+        #     # And this bit replaces a colon with a semicolon in the
+        #     # bootclasspath.  Windows requires a semicolon.
 
-        # shellcheck disable=SC2016 # I don't want these expanded
-        sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
-    fi
+        #     # shellcheck disable=SC2016 # I don't want these expanded
+        #     sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
+        # fi
 
-    log "Creating symlinks to the scripts"
+        log "Creating symlinks to the scripts"
 
-    (
         mkdir -p "${bin_dir}"
-        cd "${bin_dir}"
 
-        ln -sf "${artemis_instance_dir}/bin/artemis" .
-        ln -sf "${artemis_instance_dir}/bin/artemis-service" .
-    )
+        (
+            cd "${bin_dir}"
+
+            ln -sf "${artemis_instance_dir}/bin/artemis" .
+            ln -sf "${artemis_instance_dir}/bin/artemis-service" .
+        )
+    } >> "${log_file}" 2>&1
 
     print_result "OK"
 
     print_section "Testing the installation"
 
-    log "Testing the artemis command"
+    {
+        log "Testing the artemis command"
 
-    "${bin_dir}/artemis" version >> "${log_file}" 2>&1
+        "${bin_dir}/artemis" version
 
-    if command -v lsof > /dev/null 2>&1
-    then
-        log "Checking that the required ports are available"
+        if command -v lsof
+        then
+            # XXX Consider making this a pre-installation check
 
-        for port in 61616 5672 61613 1883 8161; do
-            if lsof -PiTCP -sTCP:LISTEN 2>> "${log_file}" | grep "${port}" > /dev/null
-            then
-                echo "ERROR: Required port ${port} is in use by something else"
-                log "ERROR: Required port ${port} is in use by something else" # XXX
-                exit 1
-            fi
-        done
-    fi
+            log "Checking that the required ports are available"
 
-    log "Testing the server"
+            for port in 61616 5672 61613 1883 8161; do
+                if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
+                then
+                    echo "ERROR: Required port ${port} is in use by something else"
+                    log "ERROR: Required port ${port} is in use by something else" # XXX
+                    exit 1
+                fi
+            done
+        fi
 
-    "${bin_dir}/artemis-service" start >> "${log_file}" 2>&1
+        log "Testing the server"
 
-    if command -v lsof > /dev/null 2>&1
-    then
-        i=100
+        "${bin_dir}/artemis-service" start
 
-        while [ "${i}" -gt 0 ]
-        do
-            if lsof -PiTCP -sTCP:LISTEN 2>> "${log_file}" | grep 61616 > /dev/null
-            then
-                break;
-            fi
+        if command -v lsof
+        then
+            i=100
 
-            sleep 2
+            while [ "${i}" -gt 0 ]
+            do
+                if lsof -PiTCP -sTCP:LISTEN | grep 61616
+                then
+                    break;
+                fi
 
-            i=$((i - 1))
-        done
-    else
-        sleep 30
-    fi
+                sleep 2
 
-    "${bin_dir}/artemis" check node --verbose >> "${log_file}" 2>&1
+                i=$((i - 1))
+            done
+        else
+            sleep 30
+        fi
 
-    # The 'artemis-service stop' command times out too quickly for CI, so
-    # I take an alternate approach.
+        "${bin_dir}/artemis" check node --verbose
 
-    kill "$(cat "${artemis_instance_dir}/data/artemis.pid")" >> "${log_file}" 2>&1
+        # The 'artemis-service stop' command times out too quickly for CI, so
+        # I take an alternate approach.
+
+        kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
+    } >> "${log_file}" 2>&1
 
     print_result "OK"
 
