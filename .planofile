@@ -1,5 +1,7 @@
 @command
 def test(app, shell="sh"):
+    check_program(shell)
+
     run(f"{shell} uninstall.sh")
 
     run(f"{shell} install.sh") # No backup
@@ -12,7 +14,8 @@ def test(app, shell="sh"):
 
 @command
 def big_test(app):
-    test(app)
+    with working_env(DEBUG=1):
+        test(app)
 
     for shell in "bash", "dash", "ksh":
         if not which(shell):
