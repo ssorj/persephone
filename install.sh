@@ -141,7 +141,8 @@ main() {
 
     print_section "Checking for required tools"
 
-    for program in awk curl grep java sed sort tail tar uname; do
+    # artemis-service requires ps
+    for program in awk curl grep java ps sed sort tail tar uname; do
         check_program "${program}"
     done
 
@@ -349,7 +350,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
         # I take an alternate approach.
 
         kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
-    } # >> "${log_file}" 2>&1
+    } >> "${log_file}" 2>&1
 
     print_result "OK"
 
