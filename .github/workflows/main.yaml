@@ -24,7 +24,8 @@ jobs:
     container: fedora:latest
     steps:
       - uses: actions/checkout@v3
-      - run: dnf -y install curl dash ksh lsof python /bin/ps sudo tar java-17-openjdk-headless
+      - run: dnf -y install busybox curl dash ksh lsof python /bin/ps sudo tar zsh java-17-openjdk-headless
+      - run: cd /usr/bin && ln -s busybox ash
       - run: ./plano big-test --verbose
   macos:
     runs-on: macos-latest
@@ -44,5 +45,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
-      - run: apt-get -qq install curl grep ksh lsof python3 sudo openjdk-17-jre-headless
+      - run: apt-get -qq install busybox curl grep ksh lsof python3 sudo zsh openjdk-17-jre-headless
+      - run: cd /usr/bin && ln -s busybox ash
       - run: ./plano big-test --verbose
