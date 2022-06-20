@@ -160,8 +160,8 @@ main() {
     print_section "Checking for required tools"
 
     {
-        # artemis-service requires ps and sudo
-        for program in awk curl grep java ps sed sudo tar
+        # artemis-service requires ps
+        for program in awk curl grep java ps sed tar
         do
             log "Checking for program '${program}'"
 
