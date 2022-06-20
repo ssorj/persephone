@@ -1,5 +1,13 @@
 @command
 def test(app, shell="sh", debug=False):
+    print_env()
+
+    print(111, which("sh"))
+    print(111, which("bash"))
+
+    print(222, which("sh.exe"))
+    print(222, which("bash.exe"))
+
     check_program(shell)
 
     if debug:
