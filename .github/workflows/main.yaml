@@ -20,7 +20,7 @@ jobs:
       - uses: cygwin/cygwin-install-action@master
       - run: |
           echo $PATH
-          python plano test
+          python plano test --shell sh.exe
         shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       # - run: python plano test --debug
       #   shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
