@@ -82,37 +82,63 @@ log() {
     echo "-- ${1} --" >> "${log_file}"
 }
 
+# The print_* functions must be called outside of the output
+# redirection blocks
+
+start_red='\033[0;31m'
+start_green='\033[0;32m'
+end_color='\033[0m'
+
 print_section() {
     echo "== ${1} =="
     echo
 
-    log "${1}"
+    log "Section: ${1}"
 }
 
 print_result() {
-    echo "   Result: ${1}"
-    echo
+    printf "   ${start_green}${1}${end_color}\n\n"
+
+    log "${1}"
 }
 
-check_program() {
-    log "Checking for ${1}"
+print_error() {
+    printf "   ${start_red}ERROR:${end_color} ${1}\n\n"
 
-    if ! command -v "${1}" >> "${log_file}" 2>&1
-    then
-        echo "ERROR: Required program ${1} is not available"
-        log "ERROR: Required program ${1} is not available" # XXX
-        exit 1
-    fi
+    log "ERROR: ${1}"
 }
+
+exit_known_error() {
+    suppress_trouble_report=1
+    exit 1
+}
+
+# error() {
+#     echo "ERROR: ${1}"
+#     log "ERROR: ${1}"
+# }
+
+# check_program() {
+#     log "Checking for ${1}"
+
+#     if ! command -v "${1}" >> "${log_file}" 2>&1
+#     then
+#         echo "ERROR: Required program ${1} is not available"
+#         log "ERROR: Required program ${1} is not available" # XXX
+#         exit 1
+#     fi
+# }
 
 # XXX This goes in init_script?
 
 handle_exit() {
     # shellcheck disable=SC2181 # This is intentionally indirect
-    if [ $? != 0 ]
+    if [ $? != 0 ] && [ -z "${suppress_trouble_report:-}" ]
     then
         echo
-        echo "TROUBLE!"
+        printf "${start_red}TROUBLE!${end_color} Something went wrong.\n"
+        echo
+        echo "Install log:"
         echo
 
         cat "${log_file}" || :
@@ -137,10 +163,24 @@ main() {
 
     print_section "Checking for required tools"
 
-    # artemis-service requires ps and sudo
-    for program in awk curl grep java ps sed sort sudo tail tar uname; do
-        check_program "${program}"
-    done
+    {
+        # artemis-service requires ps and sudo
+        for program in awk curl grep java ps sed sudo tar
+        do
+            log "Checking for program '${program}'"
+
+            if ! command -v "${program}"
+            then
+                missing="${missing:-}, ${program}"
+            fi
+        done
+    } >> "${log_file}" 2>&1
+
+    if [ -n "${missing:-}" ]
+    then
+        print_error "Some required programs are not available: ${missing#??}"
+        exit_known_error
+    fi
 
     print_result "OK"
 
