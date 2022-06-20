@@ -1,7 +1,8 @@
 @command
 def test(app, shell="sh", debug=False):
     print_env()
-    check_program(shell)
+
+    # check_program(shell)
 
     if debug:
         ENV["DEBUG"] = "1"
