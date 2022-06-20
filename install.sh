@@ -22,15 +22,11 @@ enable_strict_mode() {
     # No clobber, exit on error, and fail on unbound variables
     set -Ceu
 
-    # Request POSIX behavior from child processes
-    export POSIXLY_CORRECT=1
-
     if [ -n "${BASH:-}" ]
     then
-        # Inherit traps and fail fast in pipes
+        # Inherit traps, fail fast in pipes, and be posixy
         # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
         set -E -o pipefail -o posix
-        # XXX -o posix might be a posix thing
     fi
 }
 
@@ -103,8 +99,8 @@ check_program() {
 
     if ! command -v "${1}" >> "${log_file}" 2>&1
     then
-        echo "ERROR: Required program ${tool} is not available"
-        log "ERROR: Required program ${tool} is not available" # XXX
+        echo "ERROR: Required program ${1} is not available"
+        log "ERROR: Required program ${1} is not available" # XXX
         exit 1
     fi
 }
@@ -141,8 +137,8 @@ main() {
 
     print_section "Checking for required tools"
 
-    # artemis-service requires ps
-    for program in awk curl grep java ps sed sort tail tar uname; do
+    # artemis-service requires ps and sudo
+    for program in awk curl grep java ps sed sort sudo tail tar uname; do
         check_program "${program}"
     done
 
