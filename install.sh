@@ -90,21 +90,17 @@ start_green='\033[0;32m'
 end_color='\033[0m'
 
 print_section() {
-    echo "== ${1} =="
-    echo
-
+    printf "== ${1} ==\n\n"
     log "Section: ${1}"
 }
 
 print_result() {
     printf "   ${start_green}${1}${end_color}\n\n"
-
-    log "${1}"
+    log "Result: ${1}"
 }
 
 print_error() {
     printf "   ${start_red}ERROR:${end_color} ${1}\n\n"
-
     log "ERROR: ${1}"
 }
 
