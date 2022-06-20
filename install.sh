@@ -95,7 +95,7 @@ print_section() {
 }
 
 print_result() {
-    printf "   ${start_green}${1}${end_color}\n\n"
+    printf ".. ${start_green}${1}${end_color}\n\n"
     log "Result: ${1}"
 }
 
@@ -108,24 +108,6 @@ exit_known_error() {
     suppress_trouble_report=1
     exit 1
 }
-
-# error() {
-#     echo "ERROR: ${1}"
-#     log "ERROR: ${1}"
-# }
-
-# check_program() {
-#     log "Checking for ${1}"
-
-#     if ! command -v "${1}" >> "${log_file}" 2>&1
-#     then
-#         echo "ERROR: Required program ${1} is not available"
-#         log "ERROR: Required program ${1} is not available" # XXX
-#         exit 1
-#     fi
-# }
-
-# XXX This goes in init_script?
 
 handle_exit() {
     # shellcheck disable=SC2181 # This is intentionally indirect
@@ -376,7 +358,8 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             sleep 30
         fi
 
-        "${bin_dir}/artemis" check node --verbose
+        "${bin_dir}/artemis" producer --silent --verbose --message-count 1
+        "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
         # The 'artemis-service stop' command times out too quickly for CI, so
         # I take an alternate approach.
