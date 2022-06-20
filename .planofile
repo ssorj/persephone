@@ -22,7 +22,7 @@ def big_test(app, verbose=False, debug=False):
     if debug:
         ENV["DEBUG"] = "1"
 
-    for shell in "bash", "dash", "ksh":
+    for shell in "ash", "bash", "dash", "ksh", "zsh":
         # XXX This test doesn't work correctly on Windows
         if not which(shell):
             continue

@@ -13,3 +13,4 @@ curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
  - Subsequent steps to change the config and open up access and add access controls
  - Bourne shell with optional Bash extensions - *should* work on BSD and other unixes
  - My primary target environments are Fedora, Mac OS, and Ubuntu
+ - https://cygwin.com/index.html

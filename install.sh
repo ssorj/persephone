@@ -26,7 +26,13 @@ enable_strict_mode() {
     then
         # Inherit traps, fail fast in pipes, and be posixy
         # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
-        set -E -o pipefail -o posix
+        set -E -o pipefail -o posix +o braceexpand
+    fi
+
+    if [ -n "${ZSH_VERSION:-}" ]
+    then
+        # XXX Other POSIXy stuff
+        set -o append_create
     fi
 }
 
@@ -117,6 +123,8 @@ exit_known_error() {
 # XXX Move this to init script?
 
 handle_exit() {
+    exit_code=$?
+
     if [ -n "${VERBOSE:-}" ]
     then
         echo "== Log =="
@@ -124,7 +132,7 @@ handle_exit() {
 
         cat "${log_file}" || :
     # shellcheck disable=SC2181 # This is intentionally indirect
-    elif [ $? != 0 ] && [ -z "${suppress_trouble_report:-}" ]
+    elif [ "${exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
     then
         echo
         printf "${start_red}TROUBLE!${end_color} Something went wrong.\n"
@@ -313,7 +321,6 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             *)
                 ;;
         esac
-            fi
 
         log "Creating symlinks to the scripts"
 
