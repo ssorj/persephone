@@ -1,7 +1,6 @@
 @command
 def test(app, shell="sh", debug=False):
-    print_env()
-
+    # XXX Restore this when check_program works on Windows
     # check_program(shell)
 
     if debug:
