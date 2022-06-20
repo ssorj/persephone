@@ -18,7 +18,10 @@ jobs:
         with:
           python-version: "3.x"
       - uses: cygwin/cygwin-install-action@master
-      - run: python plano test
+      - run: |
+          echo $PATH
+          python plano test
+        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       # - run: python plano test --debug
       #   shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
       # - run: python plano big-test
