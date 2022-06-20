@@ -18,42 +18,43 @@ jobs:
         with:
           python-version: "3.x"
       - uses: cygwin/cygwin-install-action@master
-      - run: python plano test --debug
-        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
-      - run: python plano big-test
-        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
-      - run: cat ~/.cache/artemis-install-script/install.log
-        shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
-  fedora:
-    runs-on: ubuntu-latest
-    container: fedora:latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: dnf -y install curl dash ksh lsof python /bin/ps sudo tar java-17-openjdk-headless
-      - run: ./plano test --debug
-      - run: ./plano big-test
-      - run: cat ~/.cache/artemis-install-script/install.log
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
-        with:
-          distribution: "temurin"
-          java-version: "17"
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-      - run: ./plano test --debug
-      - run: ./plano big-test
-      - run: cat ~/.cache/artemis-install-script/install.log
-  ubuntu:
-    runs-on: ubuntu-latest
-    container: ubuntu:latest
-    steps:
-      - uses: actions/checkout@v3
-      - run: apt-get -qq update
-      - run: apt-get -qq install curl grep ksh lsof python3 sudo openjdk-17-jre-headless
-      - run: ./plano test --debug
-      - run: ./plano big-test
-      - run: cat ~/.cache/artemis-install-script/install.log
+      - run: python plano test
+      # - run: python plano test --debug
+      #   shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
+      # - run: python plano big-test
+      #   shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
+      # - run: cat ~/.cache/artemis-install-script/install.log
+      #   shell: C:\cygwin\bin\bash.exe --norc -eo pipefail -o igncr "{0}"
+  # fedora:
+  #   runs-on: ubuntu-latest
+  #   container: fedora:latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - run: dnf -y install curl dash ksh lsof python /bin/ps sudo tar java-17-openjdk-headless
+  #     - run: ./plano test --debug
+  #     - run: ./plano big-test
+  #     - run: cat ~/.cache/artemis-install-script/install.log
+  # macos:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-java@v3
+  #       with:
+  #         distribution: "temurin"
+  #         java-version: "17"
+  #     - uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.x"
+  #     - run: ./plano test --debug
+  #     - run: ./plano big-test
+  #     - run: cat ~/.cache/artemis-install-script/install.log
+  # ubuntu:
+  #   runs-on: ubuntu-latest
+  #   container: ubuntu:latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - run: apt-get -qq update
+  #     - run: apt-get -qq install curl grep ksh lsof python3 sudo openjdk-17-jre-headless
+  #     - run: ./plano test --debug
+  #     - run: ./plano big-test
+  #     - run: cat ~/.cache/artemis-install-script/install.log
