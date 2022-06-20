@@ -82,6 +82,11 @@ log() {
     echo "-- ${1} --" >> "${log_file}"
 }
 
+run() {
+    echo "-- Running command '$@' --" >> "${log_file}"
+    "$@"
+}
+
 # The print_* functions must be called outside of the output
 # redirection blocks
 
@@ -95,7 +100,7 @@ print_section() {
 }
 
 print_result() {
-    printf ".. ${start_green}${1}${end_color}\n\n"
+    printf "   ${start_green}${1}${end_color}\n\n"
     log "Result: ${1}"
 }
 
@@ -109,9 +114,17 @@ exit_known_error() {
     exit 1
 }
 
+# XXX Move this to init script?
+
 handle_exit() {
+    if [ -n "${VERBOSE:-}" ]
+    then
+        echo "== Log =="
+        echo
+
+        cat "${log_file}" || :
     # shellcheck disable=SC2181 # This is intentionally indirect
-    if [ $? != 0 ] && [ -z "${suppress_trouble_report:-}" ]
+    elif [ $? != 0 ] && [ -z "${suppress_trouble_report:-}" ]
     then
         echo
         printf "${start_red}TROUBLE!${end_color} Something went wrong.\n"
@@ -189,7 +202,7 @@ main() {
 
             # XXX Want a way to log command *and* run it
 
-            curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download"
+            run curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download"
 
             log "Downloaded ${release_archive}"
         else
@@ -256,13 +269,13 @@ ARTEMIS_HOME=${artemis_home_dir}
 
         log "Creating the broker instance"
 
-        "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
-                                        --user example --password example \
-                                        --host localhost --allow-anonymous \
-                                        --no-autotune \
-                                        --no-hornetq-acceptor \
-                                        --etc "${artemis_config_dir}" \
-                                        --verbose
+        run "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
+            --user example --password example \
+            --host localhost --allow-anonymous \
+            --no-autotune \
+            --no-hornetq-acceptor \
+            --etc "${artemis_config_dir}" \
+            --verbose
 
         log "Burning the instance dir into the instance scripts"
 
@@ -337,7 +350,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
 
         log "Testing the server"
 
-        "${bin_dir}/artemis-service" start
+        run "${bin_dir}/artemis-service" start
 
         if command -v lsof
         then
@@ -358,8 +371,8 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             sleep 30
         fi
 
-        "${bin_dir}/artemis" producer --silent --verbose --message-count 1
-        "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
+        run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
+        run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
         # The 'artemis-service stop' command times out too quickly for CI, so
         # I take an alternate approach.
@@ -372,6 +385,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
     print_section "Summary"
 
     echo "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
+    echo
 
     # If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
     # If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)

@@ -1,7 +1,10 @@
 @command
-def test(app, shell="sh", debug=False):
+def test(app, shell="sh", verbose=False, debug=False):
     # XXX Restore this when check_program works on Windows
     # check_program(shell)
+
+    if verbose:
+        ENV["VERBOSE"] = "1"
 
     if debug:
         ENV["DEBUG"] = "1"
@@ -10,13 +13,17 @@ def test(app, shell="sh", debug=False):
     run(f"{shell} uninstall.sh")
 
 @command
-def big_test(app, debug=False):
-    test(app, debug=debug)
+def big_test(app, verbose=False, debug=False):
+    test(app, verbose=verbose, debug=debug)
+
+    if verbose:
+        ENV["VERBOSE"] = "1"
 
     if debug:
         ENV["DEBUG"] = "1"
 
     for shell in "bash", "dash", "ksh":
+        # XXX This test doesn't work correctly on Windows
         if not which(shell):
             continue
 
@@ -35,3 +42,7 @@ def lint(app):
     check_program("shellcheck")
 
     run("shellcheck --enable all install.sh")
+
+@command
+def clean(app):
+    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
