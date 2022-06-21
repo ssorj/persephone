@@ -122,8 +122,16 @@ exit_known_error() {
 
 # XXX Move this to init script?
 
+# Save stdout and stderr before redirection
+exec 21>&1
+exec 22>&2
+
 handle_exit() {
     exit_code=$?
+
+    # Restore stdout and stderr
+    exec 1>&21
+    exec 2>&22
 
     if [ -n "${VERBOSE:-}" ]
     then
@@ -201,22 +209,29 @@ main() {
     print_section "Fetching the release archive"
 
     {
-        release_archive="${script_dir}/apache-artemis-${version}-bin.tar.gz"
+        release_archive_name="apache-artemis-${version}-bin.tar.gz"
+        release_archive="${script_dir}/${release_archive_name}"
         release_dir="${script_dir}/apache-artemis-${version}"
 
         if [ ! -e "${release_archive}" ]
         then
             log "Downloading the latest release archive"
 
-            # XXX Want a way to log command *and* run it
-
-            run curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/apache-artemis-${version}-bin.tar.gz&action=download"
-
-            log "Downloaded ${release_archive}"
+            run curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/${release_archive_name}&action=download"
         else
             log "Using the cached release archive"
         fi
 
+        log "Downloading the checksum file"
+
+        # XXX Decide if this is a "known" error
+        run curl --no-progress-meter -fo "${release_archive}.sha512" "https://downloads.apache.org/activemq/activemq-artemis/${version}/${release_archive_name}.sha512"
+
+        log "Verifying the release archive"
+
+        (cd "${script_dir}" && sha512sum --check "${release_archive}.sha512")
+
+        # XXX Move this down?
         gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
