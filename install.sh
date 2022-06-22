@@ -200,12 +200,12 @@ main() {
             mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$(random_number)"
         fi
 
-        print_section "Checking prerequisites"
+        print_section "Checking for required tools and ports"
 
         # artemis-service requires ps
         for program in awk curl grep java netstat ps sed tar
         do
-            log "Checking for program '${program}'"
+            log "Checking program '${program}'"
 
             if ! command -v "${program}"
             then
@@ -225,32 +225,16 @@ main() {
             fail "Some required programs are not available: ${missing#??}"
         fi
 
-        # if command -v lsof
-        # then
-        #     log "Checking that the required ports are available"
+        for port in 61616 5672 61613 1883 8161; do
+            log "Checking port ${port}"
 
-        #     for port in 61616 5672 61613 1883 8161; do
-        #         if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
-        #         then
-        #             fail "Required port ${port} is in use by something else"
-        #         fi
-        #     done
-        # else
-            log "Checking that the required ports are available - netstat"
-
-            for port in 61616 5672 61613 1883 8161; do
-                if netstat -an | grep LISTEN | grep ":${port}"
-                then
-                    fail "Required port ${port} is in use by something else"
-                fi
-            done
-        # fi
+            if netstat -an | grep LISTEN | grep ":${port}"
+            then
+                fail "Required port ${port} is in use by something else"
+            fi
+        done
 
         print_result "OK"
-
-        # XXX Check for needed free ports here, and if they aren't free,
-        # propose freeing them or running the script with the precondition
-        # and related testing skipped
 
         print_section "Downloading and verifying the latest release"
 
@@ -421,24 +405,19 @@ main() {
 
         run "${bin_dir}/artemis-service" start
 
-        if command -v lsof
-        then
-            i=100
+        i=100
 
-            while [ "${i}" -gt 0 ]
-            do
-                if lsof -PiTCP -sTCP:LISTEN | grep 61616
-                then
-                    break;
-                fi
+        while [ "${i}" -gt 0 ]
+        do
+            if netstat -an | grep LISTEN | grep ":61616"
+            then
+                break;
+            fi
 
-                sleep 2
+            sleep 2
 
-                i=$((i - 1))
-            done
-        else
-            sleep 30
-        fi
+            i=$((i - 1))
+        done
 
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
