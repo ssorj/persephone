@@ -201,6 +201,11 @@ main() {
                 missing="${missing:-}, ${program}"
             fi
         done
+
+        if ! command -v sha512sum && ! command -v shasum
+        then
+            missing="${missing:-}, sha512sum (or shasum)"
+        fi
     } >&3 2>&3
 
     if [ -n "${missing:-}" ]
@@ -249,7 +254,19 @@ main() {
 
         log "Verifying the release archive"
 
-        (cd "${script_dir}" && sha512sum --check "${release_archive}.sha512")
+        (
+            cd "${script_dir}"
+
+            if command -v sha512sum
+            then
+                sha512sum --check "${release_archive}.sha512"
+            elif command -v shasum
+            then
+                shasum -a 512 -c "${release_archive}.sha512"
+            else
+                assert ""
+            fi
+        )
 
         # XXX Move this down?
         gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
