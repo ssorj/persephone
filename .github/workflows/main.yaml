@@ -18,6 +18,8 @@ jobs:
         with:
           python-version: "3.x"
       - uses: cygwin/cygwin-install-action@master
+        with:
+          packages: [nc]
       - run: python plano big-test --verbose
   fedora:
     runs-on: ubuntu-latest
