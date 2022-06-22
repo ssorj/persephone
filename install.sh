@@ -31,12 +31,11 @@ log() {
 }
 
 run() {
-    {
-        echo "-- Running command '$@' --"
-        "$@"
-    } >&4 2>&4
-}
+    echo "-- Running command '$@' --"
+    "$@"
+} >&4 2>&4
 
+# XXX
 # The print_* functions must be called outside of the output
 # redirection blocks
 
@@ -58,13 +57,12 @@ print_result() {
     log "Result: ${1}"
 }
 
-print_error() {
+fail() {
     print "   ${start_red}ERROR:${end_color} ${1}\n\n"
     log "ERROR: ${1}"
-}
 
-exit_known_error() {
     suppress_trouble_report=1
+
     exit 1
 }
 
@@ -80,12 +78,16 @@ enable_strict_mode() {
         # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
         set -E -o pipefail -o posix +o braceexpand
 
+        assert -n "${POSIXLY_CORRECT}"
+
         # Restrict echo behavior
         shopt -s xpg_echo
+
     fi
 
     if [ -n "${ZSH_VERSION:-}" ]
     then
+        # Get standard POSIX behavior for appends
         set -o append_create
     fi
 }
@@ -180,54 +182,52 @@ init() {
 main() {
     init artemis-install-script
 
-    bin_dir="${HOME}/.local/bin"
-    artemis_config_dir="${HOME}/.config/artemis"
-    artemis_home_dir="${HOME}/.local/share/artemis"
-    artemis_instance_dir="${HOME}/.local/state/artemis"
-    artemis_backup_dir="${HOME}/artemis-backup"
-
-    if [ -e "${artemis_backup_dir}" ]
-    then
-        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >&4 2>&4
-    fi
-
-    print_section "Checking for required tools"
-
     {
-        # artemis-service requires ps
-        for program in awk curl grep java ps sed tar
-        do
-            log "Checking for program '${program}'"
+        bin_dir="${HOME}/.local/bin"
+        artemis_config_dir="${HOME}/.config/artemis"
+        artemis_home_dir="${HOME}/.local/share/artemis"
+        artemis_instance_dir="${HOME}/.local/state/artemis"
+        artemis_backup_dir="${HOME}/artemis-backup"
 
-            if ! command -v "${program}"
-            then
-                missing="${missing:-}, ${program}"
-            fi
-        done
-
-        log "Checking for either 'sha512sum' or 'shasum'"
-
-        if ! command -v sha512sum && ! command -v shasum
+        if [ -e "${artemis_backup_dir}" ]
         then
-            missing="${missing:-}, sha512sum (or shasum)"
+            # XXX This .<date>.<pid> is not really unique
+            # enough. Consider a standard random function.
+            mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$"
         fi
-    } >&4 2>&4
 
-    if [ -n "${missing:-}" ]
-    then
-        print_error "Some required programs are not available: ${missing#??}"
-        exit_known_error
-    fi
+            print_section "Checking for required tools"
 
-    print_result "OK"
+            # artemis-service requires ps
+            for program in awk curl grep java ps sed tar
+            do
+                log "Checking for program '${program}'"
 
-    # XXX Check for needed free ports here, and if they aren't free,
-    # propose freeing them or running the script with the precondition
-    # and related testing skipped
+                if ! command -v "${program}"
+                then
+                    missing="${missing:-}, ${program}"
+                fi
+            done
 
-    print_section "Downloading and verifying the latest release"
+            log "Checking for either 'sha512sum' or 'shasum'"
 
-    {
+            if ! command -v sha512sum && ! command -v shasum
+            then
+                missing="${missing:-}, sha512sum (or shasum)"
+            fi
+
+        if [ -n "${missing:-}" ]
+        then
+            fail "Some required programs are not available: ${missing#??}"
+        fi
+
+        print_result "OK"
+
+        # XXX Check for needed free ports here, and if they aren't free,
+        # propose freeing them or running the script with the precondition
+        # and related testing skipped
+
+        print_section "Downloading and verifying the latest release"
 
         log "Determining the latest version"
 
@@ -276,48 +276,46 @@ main() {
         gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
-    } >&4 2>&4
 
-    print_result "OK"
+        print_result "OK"
 
-    if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
-    then
-        print_section "Saving the existing installation to a backup"
+        if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
+        then
+            print_section "Saving the existing installation to a backup"
 
-        {
-            log "Saving the previous config dir"
+            {
+                log "Saving the previous config dir"
 
-            if [ -e "${artemis_config_dir}" ]
-            then
-                mkdir -p "${artemis_backup_dir}/config"
-                mv "${artemis_config_dir}" "${artemis_backup_dir}/config"
-            fi
+                if [ -e "${artemis_config_dir}" ]
+                then
+                    mkdir -p "${artemis_backup_dir}/config"
+                    mv "${artemis_config_dir}" "${artemis_backup_dir}/config"
+                fi
 
-            log "Saving the previous dist dir"
+                log "Saving the previous dist dir"
 
-            if [ -e "${artemis_home_dir}" ]
-            then
-                mkdir -p "${artemis_backup_dir}/share"
-                mv "${artemis_home_dir}" "${artemis_backup_dir}/share"
-            fi
+                if [ -e "${artemis_home_dir}" ]
+                then
+                    mkdir -p "${artemis_backup_dir}/share"
+                    mv "${artemis_home_dir}" "${artemis_backup_dir}/share"
+                fi
 
-            log "Saving the previous instance dir"
+                log "Saving the previous instance dir"
 
-            if [ -e "${artemis_instance_dir}" ]
-            then
-                mkdir -p "${artemis_backup_dir}/state"
-                mv "${artemis_instance_dir}" "${artemis_backup_dir}/state"
-            fi
+                if [ -e "${artemis_instance_dir}" ]
+                then
+                    mkdir -p "${artemis_backup_dir}/state"
+                    mv "${artemis_instance_dir}" "${artemis_backup_dir}/state"
+                fi
 
-            assert -d "${artemis_backup_dir}"
-        } >&4 2>&4
+                assert -d "${artemis_backup_dir}"
+            } >&4 2>&4
 
-        print_result "${artemis_backup_dir}"
-    fi
+            print_result "${artemis_backup_dir}"
+        fi
 
-    print_section "Installing the broker"
+        print_section "Installing the broker"
 
-    {
         log "Moving the release dir to its install location"
 
         assert ! -e "${artemis_home_dir}"
@@ -387,13 +385,11 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             ln -sf "${artemis_instance_dir}/bin/artemis" .
             ln -sf "${artemis_instance_dir}/bin/artemis-service" .
         )
-    } >&4 2>&4
 
-    print_result "OK"
+        print_result "OK"
 
-    print_section "Testing the installation"
+        print_section "Testing the installation"
 
-    {
         log "Testing the artemis command"
 
         "${bin_dir}/artemis" version
@@ -407,8 +403,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             for port in 61616 5672 61613 1883 8161; do
                 if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
                 then
-                    print_error "Required port ${port} is in use by something else"
-                    exit_known_error
+                    fail "Required port ${port} is in use by something else"
                 fi
             done
         fi
@@ -442,20 +437,20 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
         # The 'artemis-service stop' command times out too quickly for CI, so
         # I take an alternate approach.
         kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
+
+        print_result "OK"
+
+        print_section "Summary"
+
+        print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
+
+        # If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
+        # If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)
+
+        # XXX Path stuff!
+
+        # XXX details as properties
     } >&4 2>&4
-
-    print_result "OK"
-
-    print_section "Summary"
-
-    print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
-
-    # If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
-    # If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)
-
-    # XXX Path stuff!
-
-    # XXX details as properties
 }
 
 main "$@"
