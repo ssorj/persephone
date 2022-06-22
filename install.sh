@@ -21,20 +21,20 @@
 assert() {
     if ! [ "$@" ]
     then
-        echo "ASSERTION FAILED: \"${@}\"" >&3
+        echo "ASSERTION FAILED: \"${@}\"" >&4 2>&4
         exit 1
     fi
 }
 
 log() {
-    echo "-- ${1} --" >&3
+    echo "-- ${1} --" >&4 2>&4
 }
 
 run() {
     {
         echo "-- Running command '$@' --"
         "$@"
-    } >&3
+    } >&4 2>&4
 }
 
 # The print_* functions must be called outside of the output
@@ -45,7 +45,7 @@ start_green='\033[0;32m'
 end_color='\033[0m'
 
 print() {
-    printf "$@" >&1
+    printf "$@" >&3
 }
 
 print_section() {
@@ -160,17 +160,20 @@ init() {
         mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$$"
     fi
 
-    # Use file descriptor 3 for logging and command output
-    exec 3>> "${log_file}"
+    # Use file descriptor 3 for the default output
+    exec 3>&1
 
-    # If verbose, send logging and command output to stdout and
-    # suppress the default output
+    # Use file descriptor 4 for logging and command output
+    exec 4>> "${log_file}"
+
+    # If verbose, suppress the default output and send logging and
+    # command output to stdout and
     #
     # XXX Use tee to capture to the log file at the same time?
     if [ -n "${VERBOSE:-}" ]
     then
-        exec 3>&1
-        exec 1> /dev/null
+        exec 3> /dev/null
+        exec 4>&1
     fi
 }
 
@@ -185,7 +188,7 @@ main() {
 
     if [ -e "${artemis_backup_dir}" ]
     then
-        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >&3 2>&3
+        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >&4 2>&4
     fi
 
     print_section "Checking for required tools"
@@ -202,11 +205,13 @@ main() {
             fi
         done
 
+        log "Checking for either 'sha512sum' or 'shasum'"
+
         if ! command -v sha512sum && ! command -v shasum
         then
             missing="${missing:-}, sha512sum (or shasum)"
         fi
-    } >&3 2>&3
+    } >&4 2>&4
 
     if [ -n "${missing:-}" ]
     then
@@ -271,7 +276,7 @@ main() {
         gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
-    } >&3 2>&3
+    } >&4 2>&4
 
     print_result "OK"
 
@@ -305,7 +310,7 @@ main() {
             fi
 
             assert -d "${artemis_backup_dir}"
-        } >&3 2>&3
+        } >&4 2>&4
 
         print_result "${artemis_backup_dir}"
     fi
@@ -382,7 +387,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             ln -sf "${artemis_instance_dir}/bin/artemis" .
             ln -sf "${artemis_instance_dir}/bin/artemis-service" .
         )
-    } >&3 2>&3
+    } >&4 2>&4
 
     print_result "OK"
 
@@ -402,9 +407,8 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             for port in 61616 5672 61613 1883 8161; do
                 if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
                 then
-                    echo "ERROR: Required port ${port} is in use by something else"
-                    log "ERROR: Required port ${port} is in use by something else" # XXX
-                    exit 1
+                    print_error "Required port ${port} is in use by something else"
+                    exit_known_error
                 fi
             done
         fi
@@ -438,7 +442,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
         # The 'artemis-service stop' command times out too quickly for CI, so
         # I take an alternate approach.
         kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
-    } >&3 2>&3
+    } >&4 2>&4
 
     print_result "OK"
 

@@ -14,22 +14,28 @@ def test(app, shell="sh", verbose=False, debug=False):
 
 @command
 def big_test(app, verbose=False, debug=False):
-    if verbose:
-        ENV["VERBOSE"] = "1"
-
     if debug:
         ENV["DEBUG"] = "1"
 
-    run(f"sh uninstall.sh") # No existing installation
+    with working_env():
+        test(app, verbose=False)
+        test(app, verbose=True)
 
-    run(f"sh install.sh") # No existing installation and no existing backup
-    run(f"sh install.sh") # Creates a backup
-    run(f"sh install.sh") # Backs up the backup
+    with working_env():
+        if verbose:
+            ENV["VERBOSE"] = "1"
 
-    run(f"sh uninstall.sh") # No existing backup
-    run(f"sh uninstall.sh") # Creates a backup
-    run(f"sh uninstall.sh") # Backs up the backup
+        run(f"sh uninstall.sh") # No existing installation
 
+        run(f"sh install.sh") # No existing installation and no existing backup
+        run(f"sh install.sh") # Creates a backup
+        run(f"sh install.sh") # Backs up the backup
+
+        run(f"sh uninstall.sh") # No existing backup
+        run(f"sh uninstall.sh") # Creates a backup
+        run(f"sh uninstall.sh") # Backs up the backup
+
+    # XXX For the which problem
     if call("uname").startswith("CYGWIN"):
         return
 
