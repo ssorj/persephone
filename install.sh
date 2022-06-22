@@ -18,6 +18,10 @@
 # under the License.
 #
 
+random_number() {
+    echo "$(date +%s)$$"
+}
+
 assert() {
     if ! [ "$@" ]
     then
@@ -28,6 +32,10 @@ assert() {
 
 log() {
     echo "-- ${1} --"
+}
+
+log_section() {
+    echo "== ${1} =="
 }
 
 run() {
@@ -45,7 +53,7 @@ print() {
 
 print_section() {
     print "== ${1} ==\n\n"
-    log "Section: ${1}"
+    log_section "${1}"
 }
 
 print_result() {
@@ -151,10 +159,10 @@ init() {
 
     if [ -e "${log_file}" ]
     then
-        mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$$"
+        mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$(random_number)"
     fi
 
-    # Use file descriptor 3 for the default output
+    # Use file descriptor 3 for the default display output
     exec 3>&1
 
     # Use file descriptor 4 for logging and command output
@@ -164,9 +172,9 @@ init() {
     exec 7>&1
     exec 8>&2
 
-    # If verbose, suppress the default output and log straight to the
-    # console. Otherwise, capture logging and command output to the
-    # log file.
+    # If verbose, suppress the default display output and log
+    # everything to the console. Otherwise, capture logging and
+    # command output to the log file.
     #
     # XXX Use tee to capture to the log file at the same time?
     if [ -n "${VERBOSE:-}" ]
@@ -189,15 +197,13 @@ main() {
 
         if [ -e "${artemis_backup_dir}" ]
         then
-            # XXX This .<date>.<pid> is not really unique
-            # enough. Consider a standard random function.
-            mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$"
+            mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$(random_number)"
         fi
 
-        print_section "Checking for required tools"
+        print_section "Checking prerequisites"
 
         # artemis-service requires ps
-        for program in awk curl grep java ps sed tar
+        for program in awk curl grep java netstat ps sed tar
         do
             log "Checking for program '${program}'"
 
@@ -218,6 +224,27 @@ main() {
         then
             fail "Some required programs are not available: ${missing#??}"
         fi
+
+        # if command -v lsof
+        # then
+        #     log "Checking that the required ports are available"
+
+        #     for port in 61616 5672 61613 1883 8161; do
+        #         if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
+        #         then
+        #             fail "Required port ${port} is in use by something else"
+        #         fi
+        #     done
+        # else
+            log "Checking that the required ports are available - netstat"
+
+            for port in 61616 5672 61613 1883 8161; do
+                if netstat -an | grep LISTEN | grep ":${port}"
+                then
+                    fail "Required port ${port} is in use by something else"
+                fi
+            done
+        # fi
 
         print_result "OK"
 
@@ -388,23 +415,9 @@ main() {
 
         log "Testing the artemis command"
 
-        "${bin_dir}/artemis" version
+        run "${bin_dir}/artemis" version
 
-        if command -v lsof
-        then
-            # XXX Consider making this a pre-installation check
-
-            log "Checking that the required ports are available"
-
-            for port in 61616 5672 61613 1883 8161; do
-                if lsof -PiTCP -sTCP:LISTEN | grep "${port}"
-                then
-                    fail "Required port ${port} is in use by something else"
-                fi
-            done
-        fi
-
-        log "Testing the server"
+        log "Testing the broker"
 
         run "${bin_dir}/artemis-service" start
 
@@ -432,7 +445,7 @@ main() {
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I use kill instead.
-        kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
+        run kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
 
         print_result "OK"
 
