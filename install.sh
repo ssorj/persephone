@@ -18,20 +18,74 @@
 # under the License.
 #
 
+assert() {
+    if ! [ "$@" ]
+    then
+        echo "ASSERTION FAILED: \"${@}\"" >&3
+        exit 1
+    fi
+}
+
+log() {
+    echo "-- ${1} --" >&3
+}
+
+run() {
+    {
+        echo "-- Running command '$@' --"
+        "$@"
+    } >&3
+}
+
+# The print_* functions must be called outside of the output
+# redirection blocks
+
+start_red='\033[0;31m'
+start_green='\033[0;32m'
+end_color='\033[0m'
+
+print() {
+    printf "$@" >&1
+}
+
+print_section() {
+    print "== ${1} ==\n\n"
+    log "Section: ${1}"
+}
+
+print_result() {
+    print "   ${start_green}${1}${end_color}\n\n"
+    log "Result: ${1}"
+}
+
+print_error() {
+    print "   ${start_red}ERROR:${end_color} ${1}\n\n"
+    log "ERROR: ${1}"
+}
+
+exit_known_error() {
+    suppress_trouble_report=1
+    exit 1
+}
+
 enable_strict_mode() {
     # No clobber, exit on error, and fail on unbound variables
     set -Ceu
 
     if [ -n "${BASH:-}" ]
     then
-        # Inherit traps, fail fast in pipes, and be posixy
+        # Inherit traps, fail fast in pipes, enable POSIX mode, and
+        # disable brace expansion
+        #
         # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
         set -E -o pipefail -o posix +o braceexpand
+
+        # Restrict echo behavior
+        shopt -s xpg_echo
     fi
 
     if [ -n "${ZSH_VERSION:-}" ]
     then
-        # XXX Other POSIXy stuff
         set -o append_create
     fi
 }
@@ -47,13 +101,43 @@ enable_debug_mode() {
     fi
 }
 
-init_script() {
+# Save stdout and stderr before redirection
+exec 7>&1
+exec 8>&2
+
+handle_exit() {
+    exit_code=$?
+
+    # Restore stdout and stderr
+    exec 1>&7
+    exec 2>&8
+
+    # shellcheck disable=SC2181 # This is intentionally indirect
+    if [ "${exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
+    then
+        if [ -n "${VERBOSE:-}" ]
+        then
+            echo "${start_red}TROUBLE!${end_color} Something went wrong."
+        else
+            print "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
+            print_section "Install log"
+
+            cat "${log_file}" | sed "s/^/  /"
+            echo
+        fi
+    fi
+}
+
+# Takes the name of this script, which it uses to define a work dir
+init() {
     enable_strict_mode
 
     if [ -n "${DEBUG:-}" ]
     then
         enable_debug_mode
     fi
+
+    trap handle_exit EXIT
 
     # This is required to preserve the Windows drive letter in the
     # path to HOME
@@ -65,7 +149,8 @@ init_script() {
             ;;
     esac
 
-    script_dir="${HOME}/.cache/artemis-install-script"
+    script_name="${1}"
+    script_dir="${HOME}/.cache/${script_name}"
     log_file="${script_dir}/install.log"
 
     mkdir -p "${script_dir}"
@@ -74,88 +159,23 @@ init_script() {
     then
         mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$$"
     fi
-}
 
-assert() {
-    if ! [ "$@" ]
-    then
-        echo "ASSERTION FAILED: \"${@}\"" >> "${log_file}"
-        exit 1
-    fi
-}
+    # Use file descriptor 3 for logging and command output
+    exec 3>> "${log_file}"
 
-log() {
-    echo "-- ${1} --" >> "${log_file}"
-}
-
-run() {
-    echo "-- Running command '$@' --" >> "${log_file}"
-    "$@"
-}
-
-# The print_* functions must be called outside of the output
-# redirection blocks
-
-start_red='\033[0;31m'
-start_green='\033[0;32m'
-end_color='\033[0m'
-
-print_section() {
-    printf "== ${1} ==\n\n"
-    log "Section: ${1}"
-}
-
-print_result() {
-    printf "   ${start_green}${1}${end_color}\n\n"
-    log "Result: ${1}"
-}
-
-print_error() {
-    printf "   ${start_red}ERROR:${end_color} ${1}\n\n"
-    log "ERROR: ${1}"
-}
-
-exit_known_error() {
-    suppress_trouble_report=1
-    exit 1
-}
-
-# XXX Move this to init script?
-
-# Save stdout and stderr before redirection
-exec 21>&1
-exec 22>&2
-
-handle_exit() {
-    exit_code=$?
-
-    # Restore stdout and stderr
-    exec 1>&21
-    exec 2>&22
-
+    # If verbose, send logging and command output to stdout and
+    # suppress the default output
+    #
+    # XXX Use tee to capture to the log file at the same time?
     if [ -n "${VERBOSE:-}" ]
     then
-        echo "== Log =="
-        echo
-
-        cat "${log_file}" || :
-    # shellcheck disable=SC2181 # This is intentionally indirect
-    elif [ "${exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
-    then
-        echo
-        printf "${start_red}TROUBLE!${end_color} Something went wrong.\n"
-        echo
-        echo "Install log:"
-        echo
-
-        cat "${log_file}" || :
+        exec 3>&1
+        exec 1> /dev/null
     fi
 }
 
-trap handle_exit EXIT
-
 main() {
-    init_script
+    init artemis-install-script
 
     bin_dir="${HOME}/.local/bin"
     artemis_config_dir="${HOME}/.config/artemis"
@@ -165,7 +185,7 @@ main() {
 
     if [ -e "${artemis_backup_dir}" ]
     then
-        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >> "${log_file}" 2>&1
+        mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$" >&3 2>&3
     fi
 
     print_section "Checking for required tools"
@@ -181,7 +201,7 @@ main() {
                 missing="${missing:-}, ${program}"
             fi
         done
-    } >> "${log_file}" 2>&1
+    } >&3 2>&3
 
     if [ -n "${missing:-}" ]
     then
@@ -202,7 +222,7 @@ main() {
                    | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
                    | sort -t . -k1n -k2n -k3n \
                    | tail -n 1)"
-    } >> "${log_file}" 2>&1
+    } >&3 2>&3
 
     print_result "${version}"
 
@@ -235,7 +255,7 @@ main() {
         gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
-    } >> "${log_file}" 2>&1
+    } >&3 2>&3
 
     print_result "OK"
 
@@ -269,7 +289,7 @@ main() {
             fi
 
             assert -d "${artemis_backup_dir}"
-        } >> "${log_file}" 2>&1
+        } >&3 2>&3
 
         print_result "${artemis_backup_dir}"
     fi
@@ -297,8 +317,7 @@ ARTEMIS_HOME=${artemis_home_dir}
             --host localhost --allow-anonymous \
             --no-autotune \
             --no-hornetq-acceptor \
-            --etc "${artemis_config_dir}" \
-            --verbose
+            --etc "${artemis_config_dir}"
 
         log "Burning the instance dir into the instance scripts"
 
@@ -347,7 +366,7 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
             ln -sf "${artemis_instance_dir}/bin/artemis" .
             ln -sf "${artemis_instance_dir}/bin/artemis-service" .
         )
-    } >> "${log_file}" 2>&1
+    } >&3 2>&3
 
     print_result "OK"
 
@@ -402,16 +421,14 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
 
         # The 'artemis-service stop' command times out too quickly for CI, so
         # I take an alternate approach.
-
         kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
-    } >> "${log_file}" 2>&1
+    } >&3 2>&3
 
     print_result "OK"
 
     print_section "Summary"
 
-    echo "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker."
-    echo
+    print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
 
     # If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
     # If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)
