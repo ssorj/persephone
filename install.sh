@@ -220,29 +220,27 @@ main() {
     # propose freeing them or running the script with the precondition
     # and related testing skipped
 
-    print_section "Determining the latest version"
+    print_section "Downloading and verifying the latest release"
 
     {
+
+        log "Determining the latest version"
+
         version="$(curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
                    | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
                    | sort -t . -k1n -k2n -k3n \
                    | tail -n 1)"
-    } >&3 2>&3
 
-    print_result "${version}"
-
-    print_section "Fetching the release archive"
-
-    {
         release_archive_name="apache-artemis-${version}-bin.tar.gz"
-        release_archive="${script_dir}/${release_archive_name}"
+        release_archive_file="${script_dir}/${release_archive_name}"
         release_dir="${script_dir}/apache-artemis-${version}"
 
-        if [ ! -e "${release_archive}" ]
+        if [ ! -e "${release_archive_file}" ]
         then
             log "Downloading the latest release archive"
 
-            run curl --no-progress-meter -fLo "${release_archive}" "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/${release_archive_name}&action=download"
+            run curl --no-progress-meter -fLo "${release_archive_file}" \
+                "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/${release_archive_name}&action=download"
         else
             log "Using the cached release archive"
         fi
@@ -250,7 +248,8 @@ main() {
         log "Downloading the checksum file"
 
         # XXX Decide if this is a "known" error
-        run curl --no-progress-meter -fo "${release_archive}.sha512" "https://downloads.apache.org/activemq/activemq-artemis/${version}/${release_archive_name}.sha512"
+        run curl --no-progress-meter -fo "${release_archive_file}.sha512" \
+            "https://downloads.apache.org/activemq/activemq-artemis/${version}/${release_archive_name}.sha512"
 
         log "Verifying the release archive"
 
@@ -259,17 +258,17 @@ main() {
 
             if command -v sha512sum
             then
-                sha512sum --check "${release_archive}.sha512"
+                sha512sum --check "${release_archive_file}.sha512"
             elif command -v shasum
             then
-                shasum -a 512 -c "${release_archive}.sha512"
+                shasum -a 512 -c "${release_archive_file}.sha512"
             else
-                assert ""
+                assert ! ever
             fi
         )
 
         # XXX Move this down?
-        gzip -dc "${release_archive}" | (cd "$(dirname "${release_dir}")" && tar xf -)
+        gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
     } >&3 2>&3

@@ -14,28 +14,30 @@ def test(app, shell="sh", verbose=False, debug=False):
 
 @command
 def big_test(app, verbose=False, debug=False):
-    test(app, verbose=verbose, debug=debug)
-
     if verbose:
         ENV["VERBOSE"] = "1"
 
     if debug:
         ENV["DEBUG"] = "1"
 
+    run(f"sh uninstall.sh") # No existing installation
+
+    run(f"sh install.sh") # No existing installation and no existing backup
+    run(f"sh install.sh") # Creates a backup
+    run(f"sh install.sh") # Backs up the backup
+
+    run(f"sh uninstall.sh") # No existing backup
+    run(f"sh uninstall.sh") # Creates a backup
+    run(f"sh uninstall.sh") # Backs up the backup
+
+    if call("uname").startswith("CYGWIN"):
+        return
+
     for shell in "ash", "bash", "dash", "ksh", "zsh":
-        # XXX This test doesn't work correctly on Windows
         if not which(shell):
             continue
 
-        run(f"{shell} uninstall.sh") # No existing installation
-
-        run(f"{shell} install.sh") # No existing installation and no existing backup
-        run(f"{shell} install.sh") # Creates a backup
-        run(f"{shell} install.sh") # Backs up the backup
-
-        run(f"{shell} uninstall.sh") # No existing backup
-        run(f"{shell} uninstall.sh") # Creates a backup
-        run(f"{shell} uninstall.sh") # Backs up the backup
+        test(app, shell=shell, verbose=verbose, debug=debug)
 
 @command
 def lint(app):
