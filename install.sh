@@ -21,23 +21,19 @@
 assert() {
     if ! [ "$@" ]
     then
-        echo "ASSERTION FAILED: \"${@}\"" >&4 2>&4
+        echo "ASSERTION FAILED: \"${@}\""
         exit 1
     fi
 }
 
 log() {
-    echo "-- ${1} --" >&4 2>&4
+    echo "-- ${1} --"
 }
 
 run() {
-    echo "-- Running command '$@' --"
+    echo "-- Running '$@' --"
     "$@"
-} >&4 2>&4
-
-# XXX
-# The print_* functions must be called outside of the output
-# redirection blocks
+}
 
 start_red='\033[0;31m'
 start_green='\033[0;32m'
@@ -103,10 +99,6 @@ enable_debug_mode() {
     fi
 }
 
-# Save stdout and stderr before redirection
-exec 7>&1
-exec 8>&2
-
 handle_exit() {
     exit_code=$?
 
@@ -166,16 +158,22 @@ init() {
     exec 3>&1
 
     # Use file descriptor 4 for logging and command output
-    exec 4>> "${log_file}"
+    exec 4>&1
 
-    # If verbose, suppress the default output and send logging and
-    # command output to stdout and
+    # Save stdout and stderr before redirection
+    exec 7>&1
+    exec 8>&2
+
+    # If verbose, suppress the default output and log straight to the
+    # console. Otherwise, capture logging and command output to the
+    # log file.
     #
     # XXX Use tee to capture to the log file at the same time?
     if [ -n "${VERBOSE:-}" ]
     then
         exec 3> /dev/null
-        exec 4>&1
+    else
+        exec 4> "${log_file}"
     fi
 }
 
@@ -196,25 +194,25 @@ main() {
             mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$$"
         fi
 
-            print_section "Checking for required tools"
+        print_section "Checking for required tools"
 
-            # artemis-service requires ps
-            for program in awk curl grep java ps sed tar
-            do
-                log "Checking for program '${program}'"
+        # artemis-service requires ps
+        for program in awk curl grep java ps sed tar
+        do
+            log "Checking for program '${program}'"
 
-                if ! command -v "${program}"
-                then
-                    missing="${missing:-}, ${program}"
-                fi
-            done
-
-            log "Checking for either 'sha512sum' or 'shasum'"
-
-            if ! command -v sha512sum && ! command -v shasum
+            if ! command -v "${program}"
             then
-                missing="${missing:-}, sha512sum (or shasum)"
+                missing="${missing:-}, ${program}"
             fi
+        done
+
+        log "Checking for either 'sha512sum' or 'shasum'"
+
+        if ! command -v sha512sum && ! command -v shasum
+        then
+            missing="${missing:-}, sha512sum (or shasum)"
+        fi
 
         if [ -n "${missing:-}" ]
         then
@@ -283,33 +281,31 @@ main() {
         then
             print_section "Saving the existing installation to a backup"
 
-            {
-                log "Saving the previous config dir"
+            log "Saving the previous config dir"
 
-                if [ -e "${artemis_config_dir}" ]
-                then
-                    mkdir -p "${artemis_backup_dir}/config"
-                    mv "${artemis_config_dir}" "${artemis_backup_dir}/config"
-                fi
+            if [ -e "${artemis_config_dir}" ]
+            then
+                mkdir -p "${artemis_backup_dir}/config"
+                mv "${artemis_config_dir}" "${artemis_backup_dir}/config"
+            fi
 
-                log "Saving the previous dist dir"
+            log "Saving the previous dist dir"
 
-                if [ -e "${artemis_home_dir}" ]
-                then
-                    mkdir -p "${artemis_backup_dir}/share"
-                    mv "${artemis_home_dir}" "${artemis_backup_dir}/share"
-                fi
+            if [ -e "${artemis_home_dir}" ]
+            then
+                mkdir -p "${artemis_backup_dir}/share"
+                mv "${artemis_home_dir}" "${artemis_backup_dir}/share"
+            fi
 
-                log "Saving the previous instance dir"
+            log "Saving the previous instance dir"
 
-                if [ -e "${artemis_instance_dir}" ]
-                then
-                    mkdir -p "${artemis_backup_dir}/state"
-                    mv "${artemis_instance_dir}" "${artemis_backup_dir}/state"
-                fi
+            if [ -e "${artemis_instance_dir}" ]
+            then
+                mkdir -p "${artemis_backup_dir}/state"
+                mv "${artemis_instance_dir}" "${artemis_backup_dir}/state"
+            fi
 
-                assert -d "${artemis_backup_dir}"
-            } >&4 2>&4
+            assert -d "${artemis_backup_dir}"
 
             print_result "${artemis_backup_dir}"
         fi
@@ -326,8 +322,8 @@ main() {
         log "Burning the Artemis home dir into the admin script"
 
         sed -i.backup "18a\\
-ARTEMIS_HOME=${artemis_home_dir}
-" "${artemis_home_dir}/bin/artemis"
+        ARTEMIS_HOME=${artemis_home_dir}
+        " "${artemis_home_dir}/bin/artemis"
 
         log "Creating the broker instance"
 
@@ -341,12 +337,12 @@ ARTEMIS_HOME=${artemis_home_dir}
         log "Burning the instance dir into the instance scripts"
 
         sed -i.backup "18a\\
-ARTEMIS_INSTANCE=${artemis_instance_dir}
-" "${artemis_instance_dir}/bin/artemis"
+        ARTEMIS_INSTANCE=${artemis_instance_dir}
+        " "${artemis_instance_dir}/bin/artemis"
 
         sed -i.backup "18a\\
-ARTEMIS_INSTANCE=${artemis_instance_dir}
-" "${artemis_instance_dir}/bin/artemis-service"
+        ARTEMIS_INSTANCE=${artemis_instance_dir}
+        " "${artemis_instance_dir}/bin/artemis-service"
 
         case "$(uname)" in
             CYGWIN*)
@@ -434,8 +430,8 @@ ARTEMIS_INSTANCE=${artemis_instance_dir}
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
-        # The 'artemis-service stop' command times out too quickly for CI, so
-        # I take an alternate approach.
+        # The 'artemis-service stop' command times out too quickly for
+        # CI, so I use kill instead.
         kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
 
         print_result "OK"
