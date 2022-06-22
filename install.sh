@@ -22,6 +22,21 @@ random_number() {
     echo "$(date +%s)$$"
 }
 
+port_is_available() {
+    # if lsof -PiTCP -sTCP:LISTEN | fgrep ":${1}"
+    # if netstat -an | grep LISTEN | grep ":${1}"
+    if nc -z localhost "${1}"
+    then
+        return 1
+    else
+        return 0
+    fi
+}
+
+# lsof -PiTCP -sTCP:LISTEN | fgrep ":${port}"
+#
+# nc -z localhost ${port}
+
 assert() {
     if ! [ "$@" ]
     then
@@ -203,7 +218,7 @@ main() {
         print_section "Checking for required tools and ports"
 
         # artemis-service requires ps
-        for program in awk curl grep java netstat ps sed tar
+        for program in awk curl grep java nc ps sed tar
         do
             log "Checking program '${program}'"
 
@@ -228,7 +243,7 @@ main() {
         for port in 61616 5672 61613 1883 8161; do
             log "Checking port ${port}"
 
-            if netstat -an | grep LISTEN | grep ":${port}"
+            if ! port_is_available "${port}"
             then
                 fail "Required port ${port} is in use by something else"
             fi
@@ -407,12 +422,9 @@ main() {
 
         i=100
 
-        while [ "${i}" -gt 0 ]
+        while [ "${i}" -gt 0 ] && port_is_available 61616
         do
-            if netstat -an | grep LISTEN | grep ":61616"
-            then
-                break;
-            fi
+            log "Waiting for the broker to become available"
 
             sleep 2
 
