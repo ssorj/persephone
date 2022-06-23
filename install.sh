@@ -22,20 +22,18 @@ random_number() {
     echo "$(date +%s)$$"
 }
 
-port_is_available() {
+port_is_open() {
     # if lsof -PiTCP -sTCP:LISTEN | fgrep ":${1}"
     # if netstat -an | grep LISTEN | grep ":${1}"
     if nc -z localhost "${1}"
     then
+        echo "Port ${1} is open"
         return 1
     else
+        echo "Port ${1} is closed"
         return 0
     fi
 }
-
-# lsof -PiTCP -sTCP:LISTEN | fgrep ":${port}"
-#
-# nc -z localhost ${port}
 
 assert() {
     if ! [ "$@" ]
@@ -137,7 +135,7 @@ handle_exit() {
             echo "${start_red}TROUBLE!${end_color} Something went wrong."
         else
             print "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
-            print_section "Install log"
+            print "== ${1} ==\n\n"
 
             cat "${log_file}" | sed "s/^/  /"
             echo
@@ -238,16 +236,23 @@ main() {
         if [ -n "${missing:-}" ]
         then
             fail "Some required programs are not available: ${missing#??}"
+            # XXX Guidance
         fi
 
-        for port in 61616 5672 61613 1883 8161; do
+        for port in 1883 5672 8161 61613 61616; do
             log "Checking port ${port}"
 
-            if ! port_is_available "${port}"
+            if ! port_is_open "${port}"
             then
-                fail "Required port ${port} is in use by something else"
+                occupied="${occupied:-}, ${port}"
             fi
         done
+
+        if [ -n "${occupied:-}" ]
+        then
+            fail "Some required ports are in use by something else: ${occupied#??}"
+            # XXX Guidance
+        fi
 
         print_result "OK"
 
@@ -420,15 +425,10 @@ main() {
 
         run "${bin_dir}/artemis-service" start
 
-        i=100
-
-        while [ "${i}" -gt 0 ] && port_is_available 61616
+        while port_is_open 61616
         do
-            log "Waiting for the broker to become available"
-
+            log "Waiting for the broker to start"
             sleep 2
-
-            i=$((i - 1))
         done
 
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
@@ -436,7 +436,16 @@ main() {
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I use kill instead.
-        run kill "$(cat "${artemis_instance_dir}/data/artemis.pid")"
+
+        artemis_pid="$(cat "${artemis_instance_dir}/data/artemis.pid")"
+
+        run kill "${artemis_pid}"
+
+        while kill -0 "${artemis_pid}" 2> /dev/null
+        do
+            log "Waiting for the broker to exit"
+            sleep 2
+        done
 
         print_result "OK"
 
