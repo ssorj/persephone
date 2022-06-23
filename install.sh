@@ -425,28 +425,27 @@ main() {
 
         run "${bin_dir}/artemis-service" start
 
-        # while port_is_open 61616
-        # do
-        #     log "Waiting for the broker to start"
-        #     sleep 2
-        # done
-
-        run sleep 20
+        while port_is_open 61616
+        do
+            log "Waiting for the broker to start"
+            sleep 2
+        done
 
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
-
-        # The 'artemis-service stop' command times out too quickly for
-        # CI, so I use kill instead.
 
         artemis_pid="$(cat "${artemis_instance_dir}/data/artemis.pid")"
 
         run ps -efw | grep java
 
-        # run kill "${artemis_pid}"
+        # The 'artemis-service stop' command times out too quickly for
+        # CI, so I tolerate a failure here.
         run "${bin_dir}/artemis-service" stop || :
 
         run ps -efw | grep java
+
+        sleep 2
+        cat "${artemis_instance_dir}/log/artemis.log"
 
         while kill -0 "${artemis_pid}"
         do
