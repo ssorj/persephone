@@ -50,10 +50,11 @@ file_append_lines_at() {
         script="${script}${arg}\n"
     done
 
-    sed -i.backup -e "${script}" "${file}"
+    run sed -i.backup -e "${script}" "${file}"
 
     echo 111
-    cat "${file}.backup"
+    head -n 30 "${file}"
+    echo 222
 
     rm "${file}.backup"
 }
@@ -394,7 +395,8 @@ main() {
             --host localhost --allow-anonymous \
             --no-autotune \
             --no-hornetq-acceptor \
-            --etc "${artemis_config_dir}"
+            --etc "${artemis_config_dir}" \
+            --verbose
 
         log "Burning the instance dir into the instance scripts"
 
