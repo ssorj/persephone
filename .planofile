@@ -21,8 +21,11 @@ def big_test(app, verbose=False, debug=False):
     if debug:
         ENV["DEBUG"] = "1"
 
-    # test(app, verbose=False)
     test(app, verbose=True)
+    test(app, verbose=False)
+
+    test(app, debug=True)
+    test(app, debug=False)
 
     with working_env():
         if verbose:

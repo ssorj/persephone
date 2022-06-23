@@ -441,7 +441,7 @@ main() {
 
         run kill "${artemis_pid}"
 
-        while kill -0 "${artemis_pid}" 2> /dev/null
+        while kill -0 "${artemis_pid}"
         do
             log "Waiting for the broker to exit"
             sleep 2
