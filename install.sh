@@ -47,7 +47,8 @@ file_append_lines_at() {
 
     for arg in "$@"
     do
-        script="${script}${arg}\\n"
+        script="${script}${arg}\\
+"
     done
 
     run sed -i.backup -e "${script}" "${file}"
