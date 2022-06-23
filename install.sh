@@ -425,11 +425,13 @@ main() {
 
         run "${bin_dir}/artemis-service" start
 
-        while port_is_open 61616
-        do
-            log "Waiting for the broker to start"
-            sleep 2
-        done
+        # while port_is_open 61616
+        # do
+        #     log "Waiting for the broker to start"
+        #     sleep 2
+        # done
+
+        run sleep 20
 
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
