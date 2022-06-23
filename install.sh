@@ -154,7 +154,7 @@ handle_exit() {
             echo "${start_red}TROUBLE!${end_color} Something went wrong."
         else
             print "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
-            print "== ${1} ==\n\n"
+            print "== Log ==\n\n"
 
             cat "${log_file}" | sed -e "s/^/  /"
             echo
