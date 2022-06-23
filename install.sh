@@ -51,6 +51,10 @@ file_append_lines_at() {
     done
 
     sed -i.backup -e "${script}" "${file}"
+
+    echo 111
+    cat "${file}.backup"
+
     rm "${file}.backup"
 }
 
@@ -198,7 +202,7 @@ init() {
     exec 3>&1
 
     # Use file descriptor 4 for logging and command output
-    exec 4>&1
+    exec 4>&2
 
     # Save stdout and stderr before redirection
     exec 7>&1
@@ -252,6 +256,8 @@ main() {
             missing="${missing:-}, sha512sum (or shasum)"
         fi
 
+        # XXX Test with java --version to make sure it is set up
+
         if [ -n "${missing:-}" ]
         then
             fail "Some required programs are not available: ${missing%, }"
@@ -279,10 +285,14 @@ main() {
 
         log "Determining the latest version"
 
-        version="$(curl --no-progress-meter -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+        # XXX run curl ...
+
+        version="$(curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
                    | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
                    | sort -t . -k1n -k2n -k3n \
                    | tail -n 1)"
+
+        log "Version: ${version}"
 
         release_archive_name="apache-artemis-${version}-bin.tar.gz"
         release_archive_file="${script_dir}/${release_archive_name}"
@@ -292,17 +302,21 @@ main() {
         then
             log "Downloading the latest release archive"
 
-            run curl --no-progress-meter -fLo "${release_archive_file}" \
+            run curl -fLo "${release_archive_file}" \
                 "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/${release_archive_name}&action=download"
         else
             log "Using the cached release archive"
         fi
 
+        log "Archive file: ${release_archive_file}"
+
         log "Downloading the checksum file"
 
         # XXX Decide if this is a "known" error
-        run curl --no-progress-meter -fo "${release_archive_file}.sha512" \
+        run curl -fo "${release_archive_file}.sha512" \
             "https://downloads.apache.org/activemq/activemq-artemis/${version}/${release_archive_name}.sha512"
+
+        log "Checksum file: ${release_archive_file}.sha512"
 
         log "Verifying the release archive"
 
@@ -311,10 +325,10 @@ main() {
 
             if command -v sha512sum
             then
-                sha512sum --check "${release_archive_file}.sha512"
+                run sha512sum --check "${release_archive_file}.sha512"
             elif command -v shasum
             then
-                shasum -a 512 -c "${release_archive_file}.sha512"
+                run shasum -a 512 -c "${release_archive_file}.sha512"
             else
                 assert ! ever
             fi
@@ -419,10 +433,10 @@ main() {
         mkdir -p "${bin_dir}"
 
         (
-            cd "${bin_dir}"
+            run cd "${bin_dir}"
 
-            ln -sf "${artemis_instance_dir}/bin/artemis" .
-            ln -sf "${artemis_instance_dir}/bin/artemis-service" .
+            run ln -sf "${artemis_instance_dir}/bin/artemis" .
+            run ln -sf "${artemis_instance_dir}/bin/artemis-service" .
         )
 
         print_result "OK"
