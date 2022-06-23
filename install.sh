@@ -442,7 +442,7 @@ main() {
         run ps -efw | grep java
 
         # run kill "${artemis_pid}"
-        run artemis-service stop || :
+        run "${bin_dir}/artemis-service" stop || :
 
         run ps -efw | grep java
 
