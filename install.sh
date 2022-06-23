@@ -35,23 +35,22 @@ port_is_open() {
     fi
 }
 
-file_insert_lines() {
+file_append_lines_at() {
     file="${1}"
 
     shift
 
-    script="${1}a\\"
+    script="${1}a\\
+"
 
     shift
 
     for arg in "$@"
     do
-        script="${script}${arg}\\n"
+        script="${script}${arg}\n"
     done
 
-    echo "${script%\\n}"
-
-    sed -i.backup "${script%\\n}" "${file}"
+    sed -i.backup "${script%\\\n}" "${file}"
     rm "${file}.backup"
 }
 
@@ -372,7 +371,7 @@ main() {
 
         log "Burning the Artemis home dir into the admin script"
 
-        file_insert_lines "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
+        file_append_lines_at "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
 
         log "Creating the broker instance"
 
@@ -385,9 +384,8 @@ main() {
 
         log "Burning the instance dir into the instance scripts"
 
-        file_insert_lines "${artemis_instance_dir}/bin/artemis" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
-
-        file_insert_lines "${artemis_instance_dir}/bin/artemis-service" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
+        file_append_lines_at "${artemis_instance_dir}/bin/artemis" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
+        file_append_lines_at "${artemis_instance_dir}/bin/artemis-service" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
 
         case "$(uname)" in
             CYGWIN*)
