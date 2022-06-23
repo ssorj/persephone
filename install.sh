@@ -440,7 +440,7 @@ main() {
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I tolerate a failure here.
-        run "${bin_dir}/artemis-service" stop || :
+        run "${bin_dir}/artemis-service" force-stop || :
 
         run ps -efw | grep java
 
