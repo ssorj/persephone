@@ -23,7 +23,7 @@ random_number() {
 }
 
 port_is_open() {
-    # if lsof -PiTCP -sTCP:LISTEN | fgrep ":${1}"
+    # if lsof -PiTCP -sTCP:LISTEN | grep ":${1}"
     # if netstat -an | grep LISTEN | grep ":${1}"
     if nc -z localhost "${1}"
     then
@@ -33,6 +33,26 @@ port_is_open() {
         echo "Port ${1} is closed"
         return 0
     fi
+}
+
+file_insert_lines() {
+    file="${1}"
+
+    shift
+
+    script="${1}a\\"
+
+    shift
+
+    for arg in "$@"
+    do
+        script="${script}${arg}\\n"
+    done
+
+    echo "${script%\\n}"
+
+    sed -i.backup "${script%\\n}" "${file}"
+    rm "${file}.backup"
 }
 
 assert() {
@@ -222,7 +242,7 @@ main() {
 
             if ! command -v "${program}"
             then
-                missing="${missing:-}, ${program}"
+                missing="${missing:-}${program}, "
             fi
         done
 
@@ -235,7 +255,7 @@ main() {
 
         if [ -n "${missing:-}" ]
         then
-            fail "Some required programs are not available: ${missing#??}"
+            fail "Some required programs are not available: ${missing%, }"
             # XXX Guidance
         fi
 
@@ -244,13 +264,13 @@ main() {
 
             if ! port_is_open "${port}"
             then
-                occupied="${occupied:-}, ${port}"
+                occupied="${occupied:-}${port}, "
             fi
         done
 
         if [ -n "${occupied:-}" ]
         then
-            fail "Some required ports are in use by something else: ${occupied#??}"
+            fail "Some required ports are in use by something else: ${occupied%, }"
             # XXX Guidance
         fi
 
@@ -352,9 +372,7 @@ main() {
 
         log "Burning the Artemis home dir into the admin script"
 
-        sed -i.backup "18a\\
-        ARTEMIS_HOME=${artemis_home_dir}
-        " "${artemis_home_dir}/bin/artemis"
+        file_insert_lines "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
 
         log "Creating the broker instance"
 
@@ -367,13 +385,9 @@ main() {
 
         log "Burning the instance dir into the instance scripts"
 
-        sed -i.backup "18a\\
-        ARTEMIS_INSTANCE=${artemis_instance_dir}
-        " "${artemis_instance_dir}/bin/artemis"
+        file_insert_lines "${artemis_instance_dir}/bin/artemis" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
 
-        sed -i.backup "18a\\
-        ARTEMIS_INSTANCE=${artemis_instance_dir}
-        " "${artemis_instance_dir}/bin/artemis-service"
+        file_insert_lines "${artemis_instance_dir}/bin/artemis-service" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
 
         case "$(uname)" in
             CYGWIN*)
@@ -434,19 +448,16 @@ main() {
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
-        artemis_pid="$(cat "${artemis_instance_dir}/data/artemis.pid")"
-
-        # run ps -efw | grep java
-
-        # The 'artemis-service stop' command times out too quickly for
-        # CI, so I tolerate a failure here.
-        run "${bin_dir}/artemis-service" stop || :
-
-        # run ps -efw | grep java
-        # sleep 2
         # cat "${artemis_instance_dir}/log/artemis.log"
 
-        # while kill -0 "${artemis_pid}" # This fails because zombies
+        # The 'artemis-service stop' command times out too quickly for
+        # CI, so I tolerate a failure here
+        run "${bin_dir}/artemis-service" stop || :
+
+        # The kill -0 variant fails because zombies, but only in CI
+        # (and perhaps only in containers), not on my local machine
+        #
+        # while kill -0 "${artemis_pid}"
         while ! port_is_open 61616
         do
             log "Waiting for the broker to exit"
