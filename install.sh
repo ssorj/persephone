@@ -22,16 +22,16 @@ random_number() {
     echo "$(date +%s)$$"
 }
 
-port_is_open() {
+port_is_taken() {
     # if lsof -PiTCP -sTCP:LISTEN | grep ":${1}"
     # if netstat -an | grep LISTEN | grep ":${1}"
     if nc -z localhost "${1}"
     then
-        echo "Port ${1} is open"
-        return 1
-    else
-        echo "Port ${1} is closed"
+        echo "Port ${1} is taken"
         return 0
+    else
+        echo "Port ${1} is free"
+        return 1
     fi
 }
 
@@ -73,7 +73,7 @@ log_section() {
 }
 
 run() {
-    echo "-- Running '$@' --"
+    echo "-- Running '$@' --" >&2
     "$@"
 }
 
@@ -254,27 +254,31 @@ main() {
             missing="${missing:-}, sha512sum (or shasum)"
         fi
 
-        # XXX Test with java --version to make sure it is set up
-
         if [ -n "${missing:-}" ]
         then
-            fail "Some required programs are not available: ${missing%, }"
-            # XXX Guidance
+            fail "Some required programs are not available: ${missing%??}"
+            # XXX Guidance - Use your OS's package manager to lookup and install things
+        fi
+
+        if ! java --version
+        then
+            fail "The program 'java' is installed, but it isn't working"
+            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin
         fi
 
         for port in 1883 5672 8161 61613 61616; do
             log "Checking port ${port}"
 
-            if ! port_is_open "${port}"
+            if port_is_taken "${port}"
             then
-                occupied="${occupied:-}${port}, "
+                taken="${taken:-}${port}, "
             fi
         done
 
-        if [ -n "${occupied:-}" ]
+        if [ -n "${taken:-}" ]
         then
-            fail "Some required ports are in use by something else: ${occupied%, }"
-            # XXX Guidance
+            fail "Some required ports are in use by something else: ${taken%??}"
+            # XXX Guidance - Use lsof or netstat to find out what's using these ports and turn it off
         fi
 
         print_result "OK"
@@ -285,7 +289,7 @@ main() {
 
         # XXX run curl ...
 
-        version="$(curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+        version="$(run curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
                    | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
                    | sort -t . -k1n -k2n -k3n \
                    | tail -n 1)"
@@ -450,7 +454,7 @@ main() {
 
         run "${bin_dir}/artemis-service" start
 
-        while port_is_open 61616
+        while ! port_is_taken 61616
         do
             log "Waiting for the broker to start"
             sleep 2
@@ -469,7 +473,7 @@ main() {
         # (and perhaps only in containers), not on my local machine
         #
         # while kill -0 "${artemis_pid}"
-        while ! port_is_open 61616
+        while port_is_taken 61616
         do
             log "Waiting for the broker to exit"
             sleep 2
