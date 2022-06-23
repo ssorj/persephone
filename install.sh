@@ -439,7 +439,12 @@ main() {
 
         artemis_pid="$(cat "${artemis_instance_dir}/data/artemis.pid")"
 
-        run kill "${artemis_pid}"
+        run ps -efw | grep java
+
+        # run kill "${artemis_pid}"
+        run artemis-service stop || :
+
+        run ps -efw | grep java
 
         while kill -0 "${artemis_pid}"
         do
