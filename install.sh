@@ -51,11 +51,7 @@ file_append_lines_at() {
 "
     done
 
-    run sed -i.backup -e "${script}" "${file}"
-
-    echo 111
-    head -n 30 "${file}"
-    echo 222
+    run sed -i.backup -e "${script%??}" "${file}"
 
     rm "${file}.backup"
 }
@@ -327,7 +323,7 @@ main() {
 
             if command -v sha512sum
             then
-                run sha512sum --check "${release_archive_file}.sha512"
+                run sha512sum -c "${release_archive_file}.sha512"
             elif command -v shasum
             then
                 run shasum -a 512 -c "${release_archive_file}.sha512"
