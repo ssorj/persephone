@@ -436,18 +436,18 @@ main() {
 
         artemis_pid="$(cat "${artemis_instance_dir}/data/artemis.pid")"
 
-        run ps -efw | grep java
+        # run ps -efw | grep java
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I tolerate a failure here.
-        run "${bin_dir}/artemis-service" force-stop || :
+        run "${bin_dir}/artemis-service" stop || :
 
-        run ps -efw | grep java
+        # run ps -efw | grep java
+        # sleep 2
+        # cat "${artemis_instance_dir}/log/artemis.log"
 
-        sleep 2
-        cat "${artemis_instance_dir}/log/artemis.log"
-
-        while kill -0 "${artemis_pid}"
+        # while kill -0 "${artemis_pid}" # This fails because zombies
+        while ! port_is_open 61616
         do
             log "Waiting for the broker to exit"
             sleep 2
