@@ -50,7 +50,7 @@ file_append_lines_at() {
         script="${script}${arg}\n"
     done
 
-    sed -i.backup "${script%\\\n}" "${file}"
+    sed -i.backup -e "${script}" "${file}"
     rm "${file}.backup"
 }
 
@@ -156,7 +156,7 @@ handle_exit() {
             print "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
             print "== ${1} ==\n\n"
 
-            cat "${log_file}" | sed "s/^/  /"
+            cat "${log_file}" | sed -e "s/^/  /"
             echo
         fi
     fi
@@ -400,7 +400,7 @@ main() {
 
                 # # XXX Try patching for --absolute instead
 
-                # sed -i.backup2 "77,82d" "${artemis_instance_dir}/bin/artemis"
+                # sed -i.backup2 -e "77,82d" "${artemis_instance_dir}/bin/artemis"
 
                 log "Patching problem 2"
 
@@ -408,7 +408,7 @@ main() {
                 # bootclasspath.  Windows requires a semicolon.
 
                 # shellcheck disable=SC2016 # I don't want these expanded
-                sed -i.backup3 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
+                sed -i.backup3 -e 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
                 ;;
             *)
                 ;;
