@@ -120,7 +120,6 @@ enable_strict_mode() {
 
         # Restrict echo behavior
         shopt -s xpg_echo
-
     fi
 
     if [ -n "${ZSH_VERSION:-}" ]
@@ -164,7 +163,7 @@ handle_exit() {
     fi
 }
 
-# Takes the name of this script, which it uses to define a work dir
+# init <module-name> <script-name>
 init() {
     enable_strict_mode
 
@@ -185,11 +184,12 @@ init() {
             ;;
     esac
 
-    script_name="${1}"
-    script_dir="${HOME}/.cache/${script_name}"
-    log_file="${script_dir}/install.log"
+    module_name="${1}"
+    script_name="${2}"
+    work_dir="${HOME}/.cache/${module_name}"
+    log_file="${work_dir}/${script_name}.log"
 
-    mkdir -p "${script_dir}"
+    mkdir -p "${work_dir}"
 
     if [ -e "${log_file}" ]
     then
@@ -220,7 +220,7 @@ init() {
 }
 
 main() {
-    init artemis-install-script
+    init artemis-install-script install
 
     {
         bin_dir="${HOME}/.local/bin"
@@ -297,8 +297,8 @@ main() {
         log "Version: ${version}"
 
         release_archive_name="apache-artemis-${version}-bin.tar.gz"
-        release_archive_file="${script_dir}/${release_archive_name}"
-        release_dir="${script_dir}/apache-artemis-${version}"
+        release_archive_file="${work_dir}/${release_archive_name}"
+        release_dir="${work_dir}/apache-artemis-${version}"
 
         if [ ! -e "${release_archive_file}" ]
         then
@@ -323,7 +323,7 @@ main() {
         log "Verifying the release archive"
 
         (
-            cd "${script_dir}"
+            cd "${work_dir}"
 
             if command -v sha512sum
             then
