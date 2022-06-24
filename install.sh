@@ -192,6 +192,7 @@ init() {
     log_file="${work_dir}/${script_name}.log"
 
     mkdir -p "${work_dir}"
+    cd "${work_dir}"
 
     if [ -e "${log_file}" ]
     then
@@ -287,27 +288,30 @@ main() {
 
         print_section "Downloading and verifying the latest release"
 
-        log "Determining the latest version"
+        log "Determining the latest release version"
 
-        # XXX run curl ...
+        release_version_file="${work_dir}/release-version.txt"
 
-        version="$(run curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
-                   | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
-                   | sort -t . -k1n -k2n -k3n \
-                   | tail -n 1)"
+        run curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+            | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
+            | sort -t . -k1n -k2n -k3n \
+            | tail -n 1 >| "${release_version_file}"
 
-        log "Version: ${version}"
+        release_version="$(cat "${release_version_file}")"
 
-        release_archive_name="apache-artemis-${version}-bin.tar.gz"
+        log "Release version: ${release_version}"
+
+        release_archive_name="apache-artemis-${release_version}-bin.tar.gz"
         release_archive_file="${work_dir}/${release_archive_name}"
-        release_dir="${work_dir}/apache-artemis-${version}"
+        release_archive_checksum="${work_dir}/${release_archive_name}.sha512"
+        release_dir="${work_dir}/apache-artemis-${release_version}"
 
         if [ ! -e "${release_archive_file}" ]
         then
             log "Downloading the latest release archive"
 
             run curl -fLo "${release_archive_file}" \
-                "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${version}/${release_archive_name}&action=download"
+                "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${release_version}/${release_archive_name}&action=download"
         else
             log "Using the cached release archive"
         fi
@@ -316,11 +320,10 @@ main() {
 
         log "Downloading the checksum file"
 
-        # XXX Decide if this is a "known" error
-        run curl -fo "${release_archive_file}.sha512" \
-            "https://downloads.apache.org/activemq/activemq-artemis/${version}/${release_archive_name}.sha512"
+        run curl -fo "${release_archive_checksum}" \
+            "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}.sha512"
 
-        log "Checksum file: ${release_archive_file}.sha512"
+        log "Checksum file: ${release_archive_checksum}"
 
         log "Verifying the release archive"
 
@@ -329,10 +332,18 @@ main() {
 
             if command -v sha512sum
             then
-                run sha512sum -c "${release_archive_file}.sha512"
+                if ! run sha512sum -c "${release_archive_checksum}"
+                then
+                    fail "The checksum does not match the downloaded release archive"
+                    # XXX Guidance - Try blowing away the cached download
+                fi
             elif command -v shasum
             then
-                run shasum -a 512 -c "${release_archive_file}.sha512"
+                if ! run shasum -a 512 -c "${release_archive_checksum}"
+                then
+                    fail "The checksum does not match the downloaded release archive"
+                    # XXX Guidance - Try blowing away the cached download
+                fi
             else
                 assert ! ever
             fi
