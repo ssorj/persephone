@@ -22,6 +22,7 @@ random_number() {
     echo "$(date +%s)$$"
 }
 
+# func <port>
 port_is_taken() {
     # if lsof -PiTCP -sTCP:LISTEN | grep ":${1}"
     # if netstat -an | grep LISTEN | grep ":${1}"
@@ -35,6 +36,7 @@ port_is_taken() {
     fi
 }
 
+# func <file> <line-number> <lines>...
 file_append_lines_at() {
     file="${1}"
 
