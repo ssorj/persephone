@@ -19,6 +19,14 @@ if [ -e "$BIN_DIR/artemis-service" ]; then
     rm "$BIN_DIR/artemis-service"
 fi
 
+if [ -e "$HOME/bin/artemis" ]; then
+    rm "$HOME/bin/artemis"
+fi
+
+if [ -e "$HOME/bin/artemis-service" ]; then
+    rm "$HOME/bin/artemis-service"
+fi
+
 if [ -e "$CONFIG_DIR" ]; then
     rm -rf "$CONFIG_DIR"
 fi

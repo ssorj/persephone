@@ -445,6 +445,18 @@ main() {
             run ln -sf "${artemis_instance_dir}/bin/artemis-service" .
         )
 
+        # XXX What if you already have artemis in ~/bin?
+
+        if [ -d "${HOME}/bin" ]
+        then
+            (
+                run cd "${HOME}/bin"
+
+                run ln -sf "${artemis_instance_dir}/bin/artemis" .
+                run ln -sf "${artemis_instance_dir}/bin/artemis-service" .
+            )
+        fi
+
         print_result "OK"
 
         print_section "Testing the installation"
