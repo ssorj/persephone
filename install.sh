@@ -254,6 +254,8 @@ main() {
             # XXX Guidance - Use your OS's package manager to lookup and install things
         fi
 
+        log "Checking the Java installation"
+
         if ! java --version
         then
             fail "The program 'java' is installed, but it isn't working"
@@ -272,7 +274,7 @@ main() {
         if [ -n "${taken:-}" ]
         then
             fail "Some required ports are in use by something else: ${taken%??}"
-            # XXX Guidance - Use lsof or netstat to find out what's using these ports and turn it off
+            # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
 
         print_result "OK"
@@ -391,9 +393,6 @@ main() {
         mkdir -p "$(dirname "${artemis_home_dir}")"
         mv "${release_dir}" "${artemis_home_dir}"
 
-        # log "Burning the Artemis home dir into the admin script"
-        # file_append_lines_at "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
-
         log "Creating the broker instance"
 
         run "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
@@ -446,6 +445,8 @@ main() {
 
         log "Testing the artemis command"
 
+        # XXX Consider printing the log on failure
+        # cat "${artemis_instance_dir}/log/artemis.log"
         run "${bin_dir}/artemis" version
 
         log "Testing the broker"
@@ -458,19 +459,15 @@ main() {
             sleep 2
         done
 
+        # XXX Consider printing the log on failure
+        # cat "${artemis_instance_dir}/log/artemis.log"
         run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
-
-        # cat "${artemis_instance_dir}/log/artemis.log"
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I tolerate a failure here
         run "${bin_dir}/artemis-service" stop || :
 
-        # The kill -0 variant fails because zombies, but only in CI
-        # (and perhaps only in containers), not on my local machine
-        #
-        # while kill -0 "${artemis_pid}"
         while port_is_taken 61616
         do
             log "Waiting for the broker to exit"
@@ -481,14 +478,23 @@ main() {
 
         print_section "Summary"
 
-        print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
+        print_result "SUCCESS"
 
-        # If you are learning about ActiveMQ Artemis, see XXX.  (getting started)
-        # If you are deploying and configuring ActiveMQ Artemis, see XXX.  (config next steps)
+        print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
 
         # XXX Path stuff!
 
-        # XXX details as properties
+        print "   Version:       ${release_version}\n"
+        print "   Config files:  ${artemis_config_dir}\n"
+        print "   Log files:     ${artemis_instance_dir}/log\n"
+        print "   Data files:    ${artemis_instance_dir}/data\n"
+        print "\n"
+
+        print "   If you are learning about Artemis, see the getting started guide:\n\n"
+        print "     https://github.com/ssorj/persephone/blob/main/getting-started.md\n\n"
+
+        print "   If you are preparing Artemis for production use, see the deployment guide:\n\n"
+        print "     https://github.com/ssorj/persephone/blob/main/deployment.md\n\n"
     } >&4 2>&4
 }
 
