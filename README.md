@@ -14,3 +14,4 @@ curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
  - Bourne shell with optional Bash extensions - *should* work on BSD and other unixes
  - My primary target environments are Fedora, Mac OS, and Ubuntu
  - https://cygwin.com/index.html
+ - https://medium.com/@hasnat.saeed/setup-activemq-artemis-on-ubuntu-18-04-76bb4975308b
