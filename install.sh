@@ -304,7 +304,6 @@ main() {
         release_archive_name="apache-artemis-${release_version}-bin.tar.gz"
         release_archive_file="${work_dir}/${release_archive_name}"
         release_archive_checksum="${work_dir}/${release_archive_name}.sha512"
-        release_dir="${work_dir}/apache-artemis-${release_version}"
 
         if [ ! -e "${release_archive_file}" ]
         then
@@ -349,11 +348,6 @@ main() {
             fi
         )
 
-        # XXX Move this down?
-        gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
-
-        assert -d "${release_dir}"
-
         print_result "OK"
 
         if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
@@ -391,6 +385,14 @@ main() {
 
         print_section "Installing the broker"
 
+        log "Extracting the release dir from the release archive"
+
+        release_dir="${work_dir}/apache-artemis-${release_version}"
+
+        gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
+
+        assert -d "${release_dir}"
+
         log "Moving the release dir to its install location"
 
         assert ! -e "${artemis_home_dir}"
@@ -419,26 +421,14 @@ main() {
 
         case "$(uname)" in
             CYGWIN*)
-                # log "Patching problem 1"
+                log "Patching a problem with the artemis script on Windows"
 
-                # # This bit of the Artemis instance script uses a cygpath --unix,
-                # # cygpath --windows sequence that ends up stripping out the drive
-                # # letter and replacing it with whatever the current drive is. If your
-                # # current drive is different from the Artemis install drive, trouble.
-                # #
-                # # For the bug: Annotate the current code.  Suggest --absolute.
-
-                # # XXX Try patching for --absolute instead
-
-                # sed -i.backup2 -e "77,82d" "${artemis_instance_dir}/bin/artemis"
-
-                log "Patching problem 2"
-
-                # And this bit replaces a colon with a semicolon in the
+                # This bit replaces a colon with a semicolon in the
                 # bootclasspath.  Windows requires a semicolon.
 
                 # shellcheck disable=SC2016 # I don't want these expanded
-                sed -i.backup3 -e 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
+                sed -i.backup -e 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
+                rm "${artemis_instance_dir}/bin/artemis"
                 ;;
             *)
                 ;;
