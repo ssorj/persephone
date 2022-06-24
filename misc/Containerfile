@@ -1,0 +1,72 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+FROM registry.fedoraproject.org/fedora-minimal AS build
+
+RUN microdnf -y install gcc-c++ java-17-openjdk-devel make maven nodejs npm python3-numpy unzip zstd \
+    cyrus-sasl-devel cyrus-sasl-md5 cyrus-sasl-plain python3-qpid-proton \
+    qpid-proton-c-devel qpid-proton-cpp-devel \
+    && microdnf -y clean all
+
+RUN npm -g install rhea
+
+COPY . /root/quiver
+
+RUN cd /root/quiver && make install PREFIX=/usr/local
+
+FROM registry.fedoraproject.org/fedora-minimal
+
+RUN microdnf -y install java-17-openjdk-headless nodejs python3-numpy unzip zstd cyrus-sasl cyrus-sasl-md5 \
+    cyrus-sasl-plain python3-qpid-proton qpid-dispatch-router qpid-proton-c qpid-proton-cpp \
+    && microdnf -y clean all
+
+COPY --from=build /usr/local /usr/local
+
+ENV NODE_PATH=/usr/local/lib/node_modules
+WORKDIR /root
+CMD ["/bin/bash"]
+
+# Install Artemis
+#
+# WORKDIR /root
+# RUN curl -sfo apache-artemis-2.22.0.tar.gz "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/2.22.0/apache-artemis-2.22.0-bin.tar.gz&action=download"
+# RUN tar -xf apache-artemis-2.22.0.tar.gz
+#
+# WORKDIR /root/apache-artemis-2.22
+# RUN bin/artemis create ~/broker --user example --password example --allow-anonymous
+#
+# export PATH=~/broker/bin:$PATH
+#
+# ^^ Or symlink instead
+#
+# Reduce size
+#
+# rm -rf ~/apache-artemis-2.22.0/web/api ~/apache-artemis-2.22.0/web/hacking-guide ~/apache-artemis-2.22.0/web/migration-guide ~/apache-artemis-2.22.0/web/user-manual
+# rm -rf ~/apache-artemis-2.22.0/examples
+# rm -rf ~/apache-artemis-2.22.0/lib/client
+# Consider also removing older HornetQ protocol stuff
+# And then consider removing OpenWire stuff
+# ls nope
+# artemis-jdbc-store-2.22.0.jar  artemis-ra-2.22.0.jar     curator-framework-5.2.0.jar  jgroups-5.2.0.Final.jar    zookeeper-3.6.3.jar
+# artemis-quorum-api-2.22.0.jar  commons-dbcp2-2.7.0.jar   curator-recipes-5.2.0.jar                               zookeeper-jute-3.6.3.jar
+# artemis-quorum-ri-2.22.0.jar   curator-client-5.2.0.jar  failureaccess-1.0.1.jar      qpid-jms-client-1.6.0.jar
+# I want to remove the activemq jms client, but I can't
+# I'd also like to get rid of Guava
+# Remove console.war?  Is it extra?
+# Conversely, can I remove the hawtio stuff from the main lib dir?

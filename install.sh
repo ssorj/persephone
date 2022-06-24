@@ -36,28 +36,6 @@ port_is_taken() {
     fi
 }
 
-# func <file> <line-number> <lines>...
-file_append_lines_at() {
-    file="${1}"
-
-    shift
-
-    script="${1}a\\
-"
-
-    shift
-
-    for arg in "$@"
-    do
-        script="${script}${arg}\\
-"
-    done
-
-    run sed -i.backup -e "${script%??}" "${file}"
-
-    rm "${file}.backup"
-}
-
 assert() {
     if ! [ "$@" ]
     then
@@ -220,6 +198,19 @@ init() {
     else
         exec 4> "${log_file}"
     fi
+}
+
+# func <script> <artemis-instance-dir>
+create_artemis_instance_script() {
+    cat > "${1}" <<EOF
+#!/bin/sh
+
+export ARTEMIS_INSTANCE=${2}
+
+exec "\${ARTEMIS_INSTANCE}/bin/$(basename "${1}")" "\$@"
+EOF
+
+    chmod +x "${1}"
 }
 
 main() {
@@ -400,9 +391,8 @@ main() {
         mkdir -p "$(dirname "${artemis_home_dir}")"
         mv "${release_dir}" "${artemis_home_dir}"
 
-        log "Burning the Artemis home dir into the admin script"
-
-        file_append_lines_at "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
+        # log "Burning the Artemis home dir into the admin script"
+        # file_append_lines_at "${artemis_home_dir}/bin/artemis" 18 "ARTEMIS_HOME=${artemis_home_dir}"
 
         log "Creating the broker instance"
 
@@ -414,11 +404,6 @@ main() {
             --etc "${artemis_config_dir}" \
             --verbose
 
-        log "Burning the instance dir into the instance scripts"
-
-        file_append_lines_at "${artemis_instance_dir}/bin/artemis" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
-        file_append_lines_at "${artemis_instance_dir}/bin/artemis-service" 18 "ARTEMIS_INSTANCE=${artemis_instance_dir}"
-
         case "$(uname)" in
             CYGWIN*)
                 log "Patching a problem with the artemis script on Windows"
@@ -428,33 +413,31 @@ main() {
 
                 # shellcheck disable=SC2016 # I don't want these expanded
                 sed -i.backup -e 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
-                rm "${artemis_instance_dir}/bin/artemis"
+                rm "${artemis_instance_dir}/bin/artemis.backup"
                 ;;
             *)
                 ;;
         esac
 
-        log "Creating symlinks to the scripts"
+        log "Creating wrapper scripts"
+
+        # XXX What if you already have artemis in one of the bin dirs?
 
         mkdir -p "${bin_dir}"
 
-        (
-            run cd "${bin_dir}"
+        rm -f "${bin_dir}/artemis"
+        rm -f "${bin_dir}/artemis-service"
 
-            run ln -sf "${artemis_instance_dir}/bin/artemis" .
-            run ln -sf "${artemis_instance_dir}/bin/artemis-service" .
-        )
-
-        # XXX What if you already have artemis in ~/bin?
+        create_artemis_instance_script "${bin_dir}/artemis" "${artemis_instance_dir}"
+        create_artemis_instance_script "${bin_dir}/artemis-service" "${artemis_instance_dir}"
 
         if [ -d "${HOME}/bin" ]
         then
-            (
-                run cd "${HOME}/bin"
+            rm -f "${HOME}/bin/artemis"
+            rm -f "${HOME}/bin/artemis-service"
 
-                run ln -sf "${artemis_instance_dir}/bin/artemis" .
-                run ln -sf "${artemis_instance_dir}/bin/artemis-service" .
-            )
+            create_artemis_instance_script "${HOME}/bin/artemis" "${artemis_instance_dir}"
+            create_artemis_instance_script "${HOME}/bin/artemis-service" "${artemis_instance_dir}"
         fi
 
         print_result "OK"
