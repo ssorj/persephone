@@ -1,13 +1,25 @@
 # Deploying ActiveMQ Artemis
 
-## TLS
+## Changing the admin password
 
-## Logging
+## Adding users
 
-## Outside access
+## Configuring TLS
 
-## Queue and topic auto creation settings
+## Opening up network access
+
+## Disabling automatic address and queue creation
+
+## Creating queues and topics
 
 ## Installing Artemis as a system service
 
 ## Accessing the console
+
+## Persistence!
+
+## HA!
+
+## Logging
+
+## More resources

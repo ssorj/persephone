@@ -45,15 +45,11 @@ assert() {
 }
 
 log() {
-    echo "-- ${1} --"
-}
-
-log_section() {
-    echo "== ${1} =="
+    echo "-- ${1}"
 }
 
 run() {
-    echo "-- Running '$@' --" >&2
+    echo "-- Running '$@'" >&2
     "$@"
 }
 
@@ -67,7 +63,7 @@ print() {
 
 print_section() {
     print "== ${1} ==\n\n"
-    log_section "${1}"
+    echo "== ${1}"
 }
 
 print_result() {
@@ -200,6 +196,21 @@ init() {
     fi
 }
 
+usage() {
+    cat <<EOF
+Usage: ${0} [-oym]
+
+What is it?  What does it do?  What does it do by default?
+
+Options:
+  -o      Install to /opt/artemis, /etc/opt/artemis, and /var/opt/artemis
+  -v      Print detailed logging to the console
+  -y      Operate in non-interactive mode
+EOF
+
+    exit 1
+}
+
 # func <script> <artemis-instance-dir>
 create_artemis_instance_script() {
     cat > "${1}" <<EOF
@@ -214,6 +225,24 @@ EOF
 }
 
 main() {
+    while getopts ovy option
+    do
+        case "${option}" in
+            o)
+                install_to_opt=1
+                ;;
+            v)
+                VERBOSE=1
+                ;;
+            # y)
+            #     non_interactive=1
+            #     ;;
+            *)
+                usage
+                ;;
+        esac
+    done
+
     init artemis-install-script install
 
     {
@@ -223,12 +252,20 @@ main() {
         artemis_instance_dir="${HOME}/.local/state/artemis"
         artemis_backup_dir="${HOME}/artemis-backup"
 
+        if [ -n "${install_to_opt:-}" ]
+        then
+            bin_dir="/opt/artemis/bin"
+            artemis_config_dir="/etc/opt/artemis"
+            artemis_home_dir="/opt/artemis"
+            artemis_instance_dir="/var/opt/artemis"
+        fi
+
         if [ -e "${artemis_backup_dir}" ]
         then
             mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$(random_number)"
         fi
 
-        print_section "Checking for required tools and ports"
+        print_section "Checking for required tools and resources"
 
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
@@ -259,7 +296,7 @@ main() {
         if ! java --version
         then
             fail "The program 'java' is installed, but it isn't working"
-            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin
+            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
         fi
 
         for port in 1883 5672 8161 61613 61616; do
@@ -276,6 +313,18 @@ main() {
             fail "Some required ports are in use by something else: ${taken%??}"
             # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
+
+        # log "Checking permission to write to the install location"
+
+        # if run mkdir "$(dirname "${artemis_home_dir}")/artemis-install-script-test-dir"
+        # then
+        #     rmdir "$(dirname "${artemis_home_dir}")/artemis-install-script-test-dir"
+        # else
+        #     fail "I don't have permission to write to the install location"
+        #     # XXX Guidance
+        # fi
+
+        # XXX Check network access
 
         print_result "OK"
 
