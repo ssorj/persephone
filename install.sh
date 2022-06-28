@@ -37,6 +37,7 @@ port_is_taken() {
 }
 
 assert() {
+    # shellcheck disable=SC2244 # We want the split args
     if ! [ "$@" ]
     then
         echo "ASSERTION FAILED: \"${@}\""
@@ -45,36 +46,55 @@ assert() {
 }
 
 log() {
-    echo "-- ${1}"
+    printf -- "-- %s\n" "${1}"
 }
 
 run() {
-    echo "-- Running '$@'" >&2
+    printf -- "-- Running '%s'\n" "${*}" >&2
     "$@"
 }
 
-start_red='\033[0;31m'
-start_green='\033[0;32m'
-end_color='\033[0m'
+red() {
+    printf "\033[0;31m%s\033[0m" "${1}"
+}
+
+green() {
+    printf "\033[0;32m%s\033[0m" "${1}"
+}
 
 print() {
-    printf "   ${1}" >&3
-    printf "${1}"
+    if [ "${#}" = 0 ]
+    then
+        printf "\n" >&3
+        printf -- "--\n"
+        return
+    fi
+
+    if [ "${1}" = "-n" ]
+    then
+        shift
+
+        printf "   %s" "${1}" >&3
+        printf -- "-- %s" "${1}"
+    else
+        printf "   %s\n" "${1}" >&3
+        printf -- "-- %s\n" "${1}"
+    fi
 }
 
 print_section() {
-    printf "== ${1} ==\n\n" >&3
-    echo "== ${1}"
+    printf "== %s ==\n\n" "${1}" >&3
+    printf "== %s\n" "${1}"
 }
 
 print_result() {
-    printf "   ${start_green}${1}${end_color}\n\n" >&3
-    log "Result: ${1}"
+    printf "   %s\n\n" "$(green "${1}")" >&3
+    log "Result: $(green "${1}")"
 }
 
 fail() {
-    printf "   ${start_red}ERROR:${end_color} ${1}\n\n" >&3
-    log "ERROR: ${1}"
+    printf "   %s %s\n\n" "$(red "ERROR:")" "${1}" >&3
+    log "ERROR: %s" "${1}"
 
     suppress_trouble_report=1
 
@@ -129,9 +149,9 @@ handle_exit() {
     then
         if [ -n "${VERBOSE:-}" ]
         then
-            echo "${start_red}TROUBLE!${end_color} Something went wrong."
+            echo "$(red "TROUBLE!") Something went wrong."
         else
-            printf "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
+            printf "   $(red "TROUBLE!") Something went wrong.\n\n"
             printf "== Log ==\n\n"
 
             cat "${log_file}" | sed -e "s/^/  /"
@@ -177,7 +197,7 @@ init_logging() {
 usage() {
     if [ "${#}" != 0 ]
     then
-        printf "${start_red}ERROR:${end_color} ${@}\n\n"
+        printf "%b %s\n\n" "$(red "ERROR:")" "${*}"
     fi
 
     cat <<EOF
@@ -206,12 +226,14 @@ EOF
 
 # func <script> <artemis-instance-dir>
 create_artemis_instance_script() {
+    script_name="$(basename "${1}")"
+
     cat > "${1}" <<EOF
 #!/bin/sh
 
 export ARTEMIS_INSTANCE=${2}
 
-exec "\${ARTEMIS_INSTANCE}/bin/$(basename "${1}")" "\$@"
+exec "\${ARTEMIS_INSTANCE}/bin/${script_name}" "\$@"
 EOF
 
     chmod +x "${1}"
@@ -297,23 +319,24 @@ main() {
         then
             print_section "Preparing to install"
 
-            print "This script will install ActiveMQ Artemis to the following locations:\n\n"
-
-            print "  CLI tools:         ${artemis_bin_dir}\n"
-            print "  Config files:      ${artemis_config_dir}\n"
-            print "  Artemis home:      ${artemis_home_dir}\n"
-            print "  Artemis instance:  ${artemis_instance_dir}\n\n"
-
-            print "It will save a backup of any existing installation to:\n\n"
-
-            print "  ${backup_dir}\n\n"
-
-            print "Run \"install.sh -h\" to see the installation options.\n\n"
+            print "This script will install ActiveMQ Artemis to the following locations:"
+            print
+            print "    CLI tools:         ${artemis_bin_dir}"
+            print "    Config files:      ${artemis_config_dir}"
+            print "    Artemis home:      ${artemis_home_dir}"
+            print "    Artemis instance:  ${artemis_instance_dir}"
+            print
+            print "It will save a backup of any existing installation to:"
+            print
+            print "    ${backup_dir}"
+            print
+            print "Run \"install.sh -h\" to see the installation options."
+            print
 
             while true
             do
-                print "Do you want to proceed? (yes or no): "
-                read response
+                print -n "Do you want to proceed? (yes or no): "
+                read -r response
 
                 case "${response}" in
                     yes)
@@ -327,7 +350,7 @@ main() {
                 esac
             done
 
-            print "\n"
+            print
         fi
 
         print_section "Checking for required tools and resources"
@@ -335,7 +358,7 @@ main() {
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
         do
-            log "Checking program '${program}'"
+            log "Checking program '${program}'\n"
 
             if ! command -v "${program}"
             then
@@ -579,38 +602,47 @@ main() {
 
         print_result "SUCCESS"
 
-        print "ActiveMQ Artemis is now installed.\n\n"
-
-        print "  Version:                ${release_version}\n"
-        print "  The \"artemis\" command:  ${artemis_bin_dir}/artemis\n"
-        print "  Config files:           ${artemis_config_dir}\n"
-        print "  Log files:              ${artemis_instance_dir}/log\n"
-        print "  Data files:             ${artemis_instance_dir}/data\n"
+        print "ActiveMQ Artemis is now installed."
+        print
+        print "    Version:                ${release_version}"
+        print "    The \"artemis\" command:  ${artemis_bin_dir}/artemis"
+        print "    Config files:           ${artemis_config_dir}"
+        print "    Log files:              ${artemis_instance_dir}/log"
+        print "    Data files:             ${artemis_instance_dir}/data"
 
         if [ -e "${backup_dir}" ]
         then
-            print "  Backup:                 ${backup_dir}\n"
+            print "    Backup:                 ${backup_dir}"
         fi
 
-        print "\n"
+        print
 
-        print "If you are learning about Artemis, see the getting started guide:\n\n"
-        print "  https://github.com/ssorj/persephone/blob/main/getting-started.md\n\n"
+        print "If you are learning about Artemis, see the getting started guide:"
+        print
+        print "    https://github.com/ssorj/persephone/blob/main/getting-started.md"
+        print
+        print "If you are preparing Artemis for production use, see the deployment guide:"
+        print
+        print "    https://github.com/ssorj/persephone/blob/main/deployment.md"
+        print
+        print "To uninstall Artemis, use:"
+        print
+        print "    curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh"
+        print
 
-        print "If you are preparing Artemis for production use, see the deployment guide:\n\n"
-        print "  https://github.com/ssorj/persephone/blob/main/deployment.md\n\n"
-
-        print "To uninstall Artemis, use:\n\n"
-        print "  curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh\n\n"
-
-        if [ "$(command -v artemis)" = "${artemis_bin_dir}/artemisX" ]
+        if [ "$(command -v artemis)" = "${artemis_bin_dir}/artemis" ]
         then
-            print "To start the broker, use:\n\n"
-            print "  artemis run\n\n"
+            print "To start the broker, use:"
+            print
+            print "    artemis run"
+            print
         else
-            print "NOTE: The \"artemis\" command is not on your path.  To add it, use:\n\n"
-            print "  export PATH=\"${artemis_bin_dir}:\$PATH\"\n\n"
-            print "Once added, use \"artemis run\" to start the broker.\n\n"
+            print "NOTE: The \"artemis\" command is not on your path.  To add it, use:"
+            print
+            print "    export PATH=\"${artemis_bin_dir}:\$PATH\""
+            print
+            print "Once added, use \"artemis run\" to start the broker."
+            print
         fi
     } >&4 2>&4
 }
