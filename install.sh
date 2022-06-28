@@ -139,32 +139,11 @@ handle_exit() {
     fi
 }
 
-# init <module-name> <script-name>
-init() {
-    if [ -n "${DEBUG:-}" ]
-    then
-        enable_debug_mode
-    fi
+# func <log_file>
+init_logging() {
+    log_file="${1}"
 
     trap handle_exit EXIT
-
-    # This is required to preserve the Windows drive letter in the
-    # path to HOME
-    case "$(uname)" in
-        CYGWIN*)
-            HOME="$(cygpath --mixed --windows "${HOME}")"
-            ;;
-        *)
-            ;;
-    esac
-
-    module_name="${1}"
-    script_name="${2}"
-    work_dir="${HOME}/.cache/${module_name}"
-    log_file="${work_dir}/${script_name}.log"
-
-    mkdir -p "${work_dir}"
-    cd "${work_dir}"
 
     if [ -e "${log_file}" ]
     then
@@ -201,7 +180,7 @@ usage() {
     fi
 
     cat <<EOF
-Usage: ${0} [-sym]
+Usage: ${0} [-vy] [-s <scheme>]
 
 A script that installs ActiveMQ Artemis
 
@@ -234,6 +213,11 @@ EOF
 main() {
     enable_strict_mode
 
+    if [ -n "${DEBUG:-}" ]
+    then
+        enable_debug_mode
+    fi
+
     scheme="home"
     non_interactive=1
 
@@ -255,16 +239,25 @@ main() {
         esac
     done
 
+    # This is required to preserve the Windows drive letter in the
+    # path to HOME
+    case "$(uname)" in
+        CYGWIN*)
+            HOME="$(cygpath --mixed --windows "${HOME}")"
+            ;;
+        *)
+            ;;
+    esac
+
     case "${scheme}" in
         home)
-            bin_dir="${HOME}/.local/bin"
+            artemis_bin_dir="${HOME}/.local/bin"
             artemis_config_dir="${HOME}/.config/artemis"
             artemis_home_dir="${HOME}/.local/share/artemis"
             artemis_instance_dir="${HOME}/.local/state/artemis"
-            artemis_backup_dir="${HOME}/artemis-backup"
             ;;
         opt)
-            bin_dir="/opt/artemis/bin"
+            artemis_bin_dir="/opt/artemis/bin"
             artemis_config_dir="/etc/opt/artemis"
             artemis_home_dir="/opt/artemis"
             artemis_instance_dir="/var/opt/artemis"
@@ -274,12 +267,20 @@ main() {
             ;;
     esac
 
-    init artemis-install-script install
+    work_dir="${HOME}/artemis-install-script"
+    log_file="${work_dir}/install.log"
+
+    mkdir -p "${work_dir}"
+    cd "${work_dir}"
+
+    init_logging "${log_file}"
 
     {
-        if [ -e "${artemis_backup_dir}" ]
+        backup_dir="${work_dir}/backup"
+
+        if [ -e "${backup_dir}" ]
         then
-            mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$(random_number)"
+            mv "${backup_dir}" "${backup_dir}.$(date +%Y-%m-%d).$(random_number)"
         fi
 
         print_section "Checking for required tools and resources"
@@ -417,29 +418,29 @@ main() {
 
             if [ -e "${artemis_config_dir}" ]
             then
-                mkdir -p "${artemis_backup_dir}/config"
-                mv "${artemis_config_dir}" "${artemis_backup_dir}/config"
+                mkdir -p "${backup_dir}/config"
+                mv "${artemis_config_dir}" "${backup_dir}/config"
             fi
 
             log "Saving the previous dist dir"
 
             if [ -e "${artemis_home_dir}" ]
             then
-                mkdir -p "${artemis_backup_dir}/share"
-                mv "${artemis_home_dir}" "${artemis_backup_dir}/share"
+                mkdir -p "${backup_dir}/share"
+                mv "${artemis_home_dir}" "${backup_dir}/share"
             fi
 
             log "Saving the previous instance dir"
 
             if [ -e "${artemis_instance_dir}" ]
             then
-                mkdir -p "${artemis_backup_dir}/state"
-                mv "${artemis_instance_dir}" "${artemis_backup_dir}/state"
+                mkdir -p "${backup_dir}/state"
+                mv "${artemis_instance_dir}" "${backup_dir}/state"
             fi
 
-            assert -d "${artemis_backup_dir}"
+            assert -d "${backup_dir}"
 
-            print_result "${artemis_backup_dir}"
+            print_result "${backup_dir}"
         fi
 
         print_section "Installing the broker"
@@ -469,32 +470,17 @@ main() {
             --etc "${artemis_config_dir}" \
             --verbose
 
-        case "$(uname)" in
-            CYGWIN*)
-                log "Patching a problem with the artemis script on Windows"
-
-                # This bit replaces a colon with a semicolon in the
-                # bootclasspath.  Windows requires a semicolon.
-
-                # shellcheck disable=SC2016 # I don't want these expanded
-                sed -i.backup -e 's/\$LOG_MANAGER:\$WILDFLY_COMMON/\$LOG_MANAGER;\$WILDFLY_COMMON/' "${artemis_instance_dir}/bin/artemis"
-                rm "${artemis_instance_dir}/bin/artemis.backup"
-                ;;
-            *)
-                ;;
-        esac
-
         log "Creating wrapper scripts"
 
         # XXX What if you already have artemis in one of the bin dirs?
 
-        mkdir -p "${bin_dir}"
+        mkdir -p "${artemis_bin_dir}"
 
-        rm -f "${bin_dir}/artemis"
-        rm -f "${bin_dir}/artemis-service"
+        rm -f "${artemis_bin_dir}/artemis"
+        rm -f "${artemis_bin_dir}/artemis-service"
 
-        create_artemis_instance_script "${bin_dir}/artemis" "${artemis_instance_dir}"
-        create_artemis_instance_script "${bin_dir}/artemis-service" "${artemis_instance_dir}"
+        create_artemis_instance_script "${artemis_bin_dir}/artemis" "${artemis_instance_dir}"
+        create_artemis_instance_script "${artemis_bin_dir}/artemis-service" "${artemis_instance_dir}"
 
         if [ -d "${HOME}/bin" ]
         then
@@ -513,11 +499,11 @@ main() {
 
         # XXX Consider printing the log on failure
         # cat "${artemis_instance_dir}/log/artemis.log"
-        run "${bin_dir}/artemis" version
+        run "${artemis_bin_dir}/artemis" version
 
         log "Testing the broker"
 
-        run "${bin_dir}/artemis-service" start
+        run "${artemis_bin_dir}/artemis-service" start
 
         while ! port_is_taken 61616
         do
@@ -527,12 +513,12 @@ main() {
 
         # XXX Consider printing the log on failure
         # cat "${artemis_instance_dir}/log/artemis.log"
-        run "${bin_dir}/artemis" producer --silent --verbose --message-count 1
-        run "${bin_dir}/artemis" consumer --silent --verbose --message-count 1
+        run "${artemis_bin_dir}/artemis" producer --silent --verbose --message-count 1
+        run "${artemis_bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
         # The 'artemis-service stop' command times out too quickly for
         # CI, so I tolerate a failure here
-        run "${bin_dir}/artemis-service" stop || :
+        run "${artemis_bin_dir}/artemis-service" stop || :
 
         while port_is_taken 61616
         do
