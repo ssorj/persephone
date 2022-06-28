@@ -355,6 +355,14 @@ main() {
 
         print_section "Checking for required tools and resources"
 
+        log "Checking permission to write to the install location"
+
+        if [ ! -w "$(dirname "${artemis_home_dir}")" ]
+        then
+            fail "The current user doesn't have permission to write to the install location"
+            # XXX Guidance
+        fi
+
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
         do
@@ -401,16 +409,6 @@ main() {
             fail "Some required ports are in use by something else: ${taken%??}"
             # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
-
-        # log "Checking permission to write to the install location"
-
-        # if run mkdir "$(dirname "${artemis_home_dir}")/artemis-install-script-test-dir"
-        # then
-        #     rmdir "$(dirname "${artemis_home_dir}")/artemis-install-script-test-dir"
-        # else
-        #     fail "I don't have permission to write to the install location"
-        #     # XXX Guidance
-        # fi
 
         # XXX Check network access
 
@@ -542,8 +540,6 @@ main() {
 
         log "Creating wrapper scripts"
 
-        # XXX What if you already have artemis in one of the bin dirs?
-
         mkdir -p "${artemis_bin_dir}"
 
         rm -f "${artemis_bin_dir}/artemis"
@@ -552,23 +548,12 @@ main() {
         create_artemis_instance_script "${artemis_bin_dir}/artemis" "${artemis_instance_dir}"
         create_artemis_instance_script "${artemis_bin_dir}/artemis-service" "${artemis_instance_dir}"
 
-        # if [ -d "${HOME}/bin" ]
-        # then
-        #     rm -f "${HOME}/bin/artemis"
-        #     rm -f "${HOME}/bin/artemis-service"
-
-        #     create_artemis_instance_script "${HOME}/bin/artemis" "${artemis_instance_dir}"
-        #     create_artemis_instance_script "${HOME}/bin/artemis-service" "${artemis_instance_dir}"
-        # fi
-
         print_result "OK"
 
         print_section "Testing the installation"
 
         log "Testing the artemis command"
 
-        # XXX Consider printing the log on failure
-        # cat "${artemis_instance_dir}/log/artemis.log"
         run "${artemis_bin_dir}/artemis" version
 
         log "Testing the broker"
@@ -581,8 +566,6 @@ main() {
             sleep 2
         done
 
-        # XXX Consider printing the log on failure
-        # cat "${artemis_instance_dir}/log/artemis.log"
         run "${artemis_bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${artemis_bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
