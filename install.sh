@@ -141,8 +141,6 @@ handle_exit() {
 
 # init <module-name> <script-name>
 init() {
-    enable_strict_mode
-
     if [ -n "${DEBUG:-}" ]
     then
         enable_debug_mode
@@ -197,15 +195,24 @@ init() {
 }
 
 usage() {
-    cat <<EOF
-Usage: ${0} [-oym]
+    if [ "${#}" != 0 ]
+    then
+        printf "${start_red}ERROR:${end_color} ${@}\n\n"
+    fi
 
-What is it?  What does it do?  What does it do by default?
+    cat <<EOF
+Usage: ${0} [-sym]
+
+A script that installs ActiveMQ Artemis
 
 Options:
-  -o      Install to /opt/artemis, /etc/opt/artemis, and /var/opt/artemis
-  -v      Print detailed logging to the console
-  -y      Operate in non-interactive mode
+  -s <scheme>   Select an installation scheme (default "home")
+  -v            Print detailed logging to the console
+  -y            Operate in non-interactive mode
+
+Installation schemes:
+  home          Install to ~/.local and ~/.config
+  opt           Install to /opt, /var/opt, and /etc/opt
 EOF
 
     exit 1
@@ -225,41 +232,51 @@ EOF
 }
 
 main() {
-    while getopts ovy option
+    enable_strict_mode
+
+    scheme="home"
+    non_interactive=1
+
+    while getopts :s:vy option
     do
         case "${option}" in
-            o)
-                install_to_opt=1
+            s)
+                scheme="${OPTARG}"
                 ;;
             v)
                 VERBOSE=1
                 ;;
-            # y)
-            #     non_interactive=1
-            #     ;;
+            y)
+                non_interactive=1
+                ;;
             *)
-                usage
+                usage "Option \"${OPTARG}\" is unknown"
                 ;;
         esac
     done
 
-    init artemis-install-script install
-
-    {
-        bin_dir="${HOME}/.local/bin"
-        artemis_config_dir="${HOME}/.config/artemis"
-        artemis_home_dir="${HOME}/.local/share/artemis"
-        artemis_instance_dir="${HOME}/.local/state/artemis"
-        artemis_backup_dir="${HOME}/artemis-backup"
-
-        if [ -n "${install_to_opt:-}" ]
-        then
+    case "${scheme}" in
+        home)
+            bin_dir="${HOME}/.local/bin"
+            artemis_config_dir="${HOME}/.config/artemis"
+            artemis_home_dir="${HOME}/.local/share/artemis"
+            artemis_instance_dir="${HOME}/.local/state/artemis"
+            artemis_backup_dir="${HOME}/artemis-backup"
+            ;;
+        opt)
             bin_dir="/opt/artemis/bin"
             artemis_config_dir="/etc/opt/artemis"
             artemis_home_dir="/opt/artemis"
             artemis_instance_dir="/var/opt/artemis"
-        fi
+            ;;
+        *)
+            usage "Installation scheme \"${scheme}\" is unknown"
+            ;;
+    esac
 
+    init artemis-install-script install
+
+    {
         if [ -e "${artemis_backup_dir}" ]
         then
             mv "${artemis_backup_dir}" "${artemis_backup_dir}.$(date +%Y-%m-%d).$(random_number)"
