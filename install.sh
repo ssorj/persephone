@@ -59,7 +59,7 @@ end_color='\033[0m'
 
 print() {
     printf "   ${1}" >&3
-    echo "${1}"
+    printf "${1}"
 }
 
 print_section() {
@@ -181,11 +181,12 @@ usage() {
     fi
 
     cat <<EOF
-Usage: ${0} [-vy] [-s <scheme>]
+Usage: ${0} [-hvy] [-s <scheme>]
 
 A script that installs ActiveMQ Artemis
 
 Options:
+  -h            Print this help text and exit
   -s <scheme>   Select an installation scheme (default "home")
   -v            Print detailed logging to the console
   -y            Operate in non-interactive mode
@@ -195,7 +196,12 @@ Installation schemes:
   opt           Install to /opt, /var/opt, and /etc/opt
 EOF
 
-    exit 1
+    if [ "${#}" = 0 ]
+    then
+        exit 0
+    else
+        exit 1
+    fi
 }
 
 # func <script> <artemis-instance-dir>
@@ -222,9 +228,12 @@ main() {
     scheme="home"
     interactive=1
 
-    while getopts :s:vy option
+    while getopts :hs:vy option
     do
         case "${option}" in
+            h)
+                usage
+                ;;
             s)
                 scheme="${OPTARG}"
                 ;;
@@ -290,7 +299,7 @@ main() {
 
             print "This script will install ActiveMQ Artemis to the following locations:\n\n"
 
-            print "  Executables:       ${artemis_bin_dir}\n"
+            print "  CLI tools:         ${artemis_bin_dir}\n"
             print "  Config files:      ${artemis_config_dir}\n"
             print "  Artemis home:      ${artemis_home_dir}\n"
             print "  Artemis instance:  ${artemis_instance_dir}\n\n"
@@ -299,9 +308,11 @@ main() {
 
             print "  ${backup_dir}\n\n"
 
+            print "Run \"install.sh -h\" to see the installation options.\n\n"
+
             while true
             do
-                print "Proceed? (yes or no): "
+                print "Do you want to proceed? (yes or no): "
                 read response
 
                 case "${response}" in
@@ -315,6 +326,8 @@ main() {
                         ;;
                 esac
             done
+
+            print "\n"
         fi
 
         print_section "Checking for required tools and resources"
@@ -474,7 +487,7 @@ main() {
 
             assert -d "${backup_dir}"
 
-            print_result "${backup_dir}"
+            print_result "OK"
         fi
 
         print_section "Installing the broker"
@@ -516,14 +529,14 @@ main() {
         create_artemis_instance_script "${artemis_bin_dir}/artemis" "${artemis_instance_dir}"
         create_artemis_instance_script "${artemis_bin_dir}/artemis-service" "${artemis_instance_dir}"
 
-        if [ -d "${HOME}/bin" ]
-        then
-            rm -f "${HOME}/bin/artemis"
-            rm -f "${HOME}/bin/artemis-service"
+        # if [ -d "${HOME}/bin" ]
+        # then
+        #     rm -f "${HOME}/bin/artemis"
+        #     rm -f "${HOME}/bin/artemis-service"
 
-            create_artemis_instance_script "${HOME}/bin/artemis" "${artemis_instance_dir}"
-            create_artemis_instance_script "${HOME}/bin/artemis-service" "${artemis_instance_dir}"
-        fi
+        #     create_artemis_instance_script "${HOME}/bin/artemis" "${artemis_instance_dir}"
+        #     create_artemis_instance_script "${HOME}/bin/artemis-service" "${artemis_instance_dir}"
+        # fi
 
         print_result "OK"
 
@@ -566,14 +579,19 @@ main() {
 
         print_result "SUCCESS"
 
-        print "ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
+        print "ActiveMQ Artemis is now installed.\n\n"
 
-        # XXX Path stuff!
+        print "  Version:                ${release_version}\n"
+        print "  The \"artemis\" command:  ${artemis_bin_dir}/artemis\n"
+        print "  Config files:           ${artemis_config_dir}\n"
+        print "  Log files:              ${artemis_instance_dir}/log\n"
+        print "  Data files:             ${artemis_instance_dir}/data\n"
 
-        print "  Version:       ${release_version}\n"
-        print "  Config files:  ${artemis_config_dir}\n"
-        print "  Log files:     ${artemis_instance_dir}/log\n"
-        print "  Data files:    ${artemis_instance_dir}/data\n"
+        if [ -e "${backup_dir}" ]
+        then
+            print "  Backup:                 ${backup_dir}\n"
+        fi
+
         print "\n"
 
         print "If you are learning about Artemis, see the getting started guide:\n\n"
@@ -581,6 +599,19 @@ main() {
 
         print "If you are preparing Artemis for production use, see the deployment guide:\n\n"
         print "  https://github.com/ssorj/persephone/blob/main/deployment.md\n\n"
+
+        print "To uninstall Artemis, use:\n\n"
+        print "  curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh\n\n"
+
+        if [ "$(command -v artemis)" = "${artemis_bin_dir}/artemisX" ]
+        then
+            print "To start the broker, use:\n\n"
+            print "  artemis run\n\n"
+        else
+            print "NOTE: The \"artemis\" command is not on your path.  To add it, use:\n\n"
+            print "  export PATH=\"${artemis_bin_dir}:\$PATH\"\n\n"
+            print "Once added, use \"artemis run\" to start the broker.\n\n"
+        fi
     } >&4 2>&4
 }
 
