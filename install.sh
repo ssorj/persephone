@@ -58,21 +58,22 @@ start_green='\033[0;32m'
 end_color='\033[0m'
 
 print() {
-    printf "$@" >&3
+    printf "   ${1}" >&3
+    echo "${1}"
 }
 
 print_section() {
-    print "== ${1} ==\n\n"
+    printf "== ${1} ==\n\n" >&3
     echo "== ${1}"
 }
 
 print_result() {
-    print "   ${start_green}${1}${end_color}\n\n"
+    printf "   ${start_green}${1}${end_color}\n\n" >&3
     log "Result: ${1}"
 }
 
 fail() {
-    print "   ${start_red}ERROR:${end_color} ${1}\n\n"
+    printf "   ${start_red}ERROR:${end_color} ${1}\n\n" >&3
     log "ERROR: ${1}"
 
     suppress_trouble_report=1
@@ -130,8 +131,8 @@ handle_exit() {
         then
             echo "${start_red}TROUBLE!${end_color} Something went wrong."
         else
-            print "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
-            print "== Log ==\n\n"
+            printf "   ${start_red}TROUBLE!${end_color} Something went wrong.\n\n"
+            printf "== Log ==\n\n"
 
             cat "${log_file}" | sed -e "s/^/  /"
             echo
@@ -219,7 +220,7 @@ main() {
     fi
 
     scheme="home"
-    non_interactive=1
+    interactive=1
 
     while getopts :s:vy option
     do
@@ -231,7 +232,7 @@ main() {
                 VERBOSE=1
                 ;;
             y)
-                non_interactive=1
+                interactive=
                 ;;
             *)
                 usage "Option \"${OPTARG}\" is unknown"
@@ -281,6 +282,39 @@ main() {
         if [ -e "${backup_dir}" ]
         then
             mv "${backup_dir}" "${backup_dir}.$(date +%Y-%m-%d).$(random_number)"
+        fi
+
+        if [ -n "${interactive}" ]
+        then
+            print_section "Preparing to install"
+
+            print "This script will install ActiveMQ Artemis to the following locations:\n\n"
+
+            print "  Executables:       ${artemis_bin_dir}\n"
+            print "  Config files:      ${artemis_config_dir}\n"
+            print "  Artemis home:      ${artemis_home_dir}\n"
+            print "  Artemis instance:  ${artemis_instance_dir}\n\n"
+
+            print "It will save a backup of any existing installation to:\n\n"
+
+            print "  ${backup_dir}\n\n"
+
+            while true
+            do
+                print "Proceed? (yes or no): "
+                read response
+
+                case "${response}" in
+                    yes)
+                        break
+                        ;;
+                    no)
+                        exit
+                        ;;
+                    *)
+                        ;;
+                esac
+            done
         fi
 
         print_section "Checking for required tools and resources"
@@ -532,21 +566,21 @@ main() {
 
         print_result "SUCCESS"
 
-        print "   ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
+        print "ActiveMQ Artemis is now installed.  Use 'artemis run' to start the broker.\n\n"
 
         # XXX Path stuff!
 
-        print "   Version:       ${release_version}\n"
-        print "   Config files:  ${artemis_config_dir}\n"
-        print "   Log files:     ${artemis_instance_dir}/log\n"
-        print "   Data files:    ${artemis_instance_dir}/data\n"
+        print "  Version:       ${release_version}\n"
+        print "  Config files:  ${artemis_config_dir}\n"
+        print "  Log files:     ${artemis_instance_dir}/log\n"
+        print "  Data files:    ${artemis_instance_dir}/data\n"
         print "\n"
 
-        print "   If you are learning about Artemis, see the getting started guide:\n\n"
-        print "     https://github.com/ssorj/persephone/blob/main/getting-started.md\n\n"
+        print "If you are learning about Artemis, see the getting started guide:\n\n"
+        print "  https://github.com/ssorj/persephone/blob/main/getting-started.md\n\n"
 
-        print "   If you are preparing Artemis for production use, see the deployment guide:\n\n"
-        print "     https://github.com/ssorj/persephone/blob/main/deployment.md\n\n"
+        print "If you are preparing Artemis for production use, see the deployment guide:\n\n"
+        print "  https://github.com/ssorj/persephone/blob/main/deployment.md\n\n"
     } >&4 2>&4
 }
 
