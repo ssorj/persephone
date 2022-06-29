@@ -40,7 +40,7 @@ assert() {
     # shellcheck disable=SC2244 # We want the split args
     if ! [ "$@" ]
     then
-        echo "ASSERTION FAILED: \"${@}\""
+        printf "$(red "ASSERTION FAILED:") \"%s\"" "${*}"
         exit 1
     fi
 }
@@ -60,6 +60,10 @@ red() {
 
 green() {
     printf "\033[0;32m%s\033[0m" "${1}"
+}
+
+yellow() {
+    printf "\033[0;33m%s\033[0m" "${1}"
 }
 
 print() {
@@ -116,12 +120,14 @@ enable_strict_mode() {
         assert -n "${POSIXLY_CORRECT}"
 
         # Restrict echo behavior
+        # shellcheck disable=SC3044 # Intentionally Bash-specific
         shopt -s xpg_echo
     fi
 
     if [ -n "${ZSH_VERSION:-}" ]
     then
         # Get standard POSIX behavior for appends
+        # shellcheck disable=SC3040 # Intentionally Zsh-specific
         set -o append_create
     fi
 }
@@ -151,10 +157,10 @@ handle_exit() {
         then
             echo "$(red "TROUBLE!") Something went wrong."
         else
-            printf "   $(red "TROUBLE!") Something went wrong.\n\n"
+            printf "   %s Something went wrong.\n\n" "$(red "TROUBLE!")"
             printf "== Log ==\n\n"
 
-            cat "${log_file}" | sed -e "s/^/  /"
+            sed -e "s/^/  /" < "${log_file}"
             echo
         fi
     fi
@@ -454,27 +460,23 @@ main() {
 
         log "Verifying the release archive"
 
-        (
-            cd "${work_dir}"
-
-            if command -v sha512sum
+        if command -v sha512sum
+        then
+            if ! run sha512sum -c "${release_archive_checksum}"
             then
-                if ! run sha512sum -c "${release_archive_checksum}"
-                then
-                    fail "The checksum does not match the downloaded release archive"
-                    # XXX Guidance - Try blowing away the cached download
-                fi
-            elif command -v shasum
-            then
-                if ! run shasum -a 512 -c "${release_archive_checksum}"
-                then
-                    fail "The checksum does not match the downloaded release archive"
-                    # XXX Guidance - Try blowing away the cached download
-                fi
-            else
-                assert ! ever
+                fail "The checksum does not match the downloaded release archive"
+                # XXX Guidance - Try blowing away the cached download
             fi
-        )
+        elif command -v shasum
+        then
+            if ! run shasum -a 512 -c "${release_archive_checksum}"
+            then
+                fail "The checksum does not match the downloaded release archive"
+                # XXX Guidance - Try blowing away the cached download
+            fi
+        else
+            assert ! ever
+        fi
 
         print_result "OK"
 
@@ -620,7 +622,7 @@ main() {
             print "    artemis run"
             print
         else
-            print "NOTE: The \"artemis\" command is not on your path.  To add it, use:"
+            print "$(yellow "NOTE:") The \"artemis\" command is not on your path.  To add it, use:"
             print
             print "    export PATH=\"${artemis_bin_dir}:\$PATH\""
             print
