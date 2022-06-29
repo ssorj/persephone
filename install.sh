@@ -198,6 +198,180 @@ init_logging() {
     fi
 }
 
+check_writable_directories() {
+    log "Checking for permission to write to the install directories"
+
+    for dir in "$@"
+    do
+        log "Checking directory '${dir}'"
+
+        base_dir="${dir}"
+
+        while [ ! -e "${base_dir}" ]
+        do
+            base_dir="$(dirname "${base_dir}")"
+        done
+
+        if [ -w "${base_dir}" ]
+        then
+            printf "Directory '%s' is writable\n" "${base_dir}"
+        else
+            printf "Directory '%s' is not writeable\n" "${base_dir}"
+            unwritable_dirs="${unwritable_dirs:-}${base_dir}, "
+        fi
+    done
+
+    if [ -n "${unwritable_dirs:-}" ]
+    then
+        fail "Some directories are not writable: ${unwritable_dirs%??}"
+        # XXX Guidance
+    fi
+}
+
+check_required_programs() {
+    log "Checking for required programs"
+
+    for program in "$@"
+    do
+        log "Checking program '${program}'"
+
+        if ! command -v "${program}"
+        then
+            unavailable_programs="${unavailable_programs:-}${program}, "
+        fi
+    done
+
+    if [ -n "${unavailable_programs:-}" ]
+    then
+        fail "Some required programs are not available: ${unavailable_programs%??}"
+        # XXX Guidance - Use your OS's package manager to lookup and install things
+    fi
+}
+
+check_required_program_sha512sum() {
+    log "Checking for either 'sha512sum' or 'shasum'"
+
+    if ! command -v sha512sum && ! command -v shasum
+    then
+        fail "Some required programs are not available: sha512sum or shasum"
+    fi
+}
+
+check_required_ports() {
+    log "Checking for required ports"
+
+    for port in "$@"
+    do
+        log "Checking port ${port}"
+
+        if ! port_is_available "${port}"
+        then
+            unavailable_ports="${unavailable_ports:-}${port}, "
+        fi
+    done
+
+    if [ -n "${unavailable_ports:-}" ]
+    then
+        fail "Some required ports are in use by something else: ${unavailable_ports%??}"
+        # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
+    fi
+}
+
+check_required_network_resources() {
+    log "Checking for required network resources"
+
+    for url in "$@"
+    do
+        log "Checking URL '${url}'"
+
+        if ! curl -sf --show-error --head "${url}"
+        then
+            unavailable_urls="${unavailable_urls:-}${url}, "
+        fi
+    done
+
+    if [ -n "${unavailable_urls:-}" ]
+    then
+        fail "Some required network resources are not available: ${unavailable_urls%??}"
+        # XXX Guidance
+    fi
+}
+
+check_java() {
+    log "Checking the Java installation"
+
+    if ! java --version
+    then
+        fail "The program 'java' is available, but it isn't working"
+        # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
+    fi
+}
+
+# func <url-path> -> release_file=<file>
+fetch_latest_apache_release() {
+    url_path="${1}"
+    release_version_file="${work_dir}/release-version.txt"
+
+    log "Looking up the latest release version"
+
+    run curl -sf --show-error "https://dlcdn.apache.org${url_path}" \
+        | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
+        | sort -t . -k1n -k2n -k3n \
+        | tail -n 1 >| "${release_version_file}"
+
+    release_version="$(cat "${release_version_file}")"
+
+    printf "Release version: %s\n" "${release_version}"
+    printf "Release version file: %s\n" "${release_version_file}"
+
+    release_file_name="apache-artemis-${release_version}-bin.tar.gz"
+    release_file="${work_dir}/${release_file_name}"
+    release_file_checksum="${release_file}.sha512"
+
+    if [ ! -e "${release_file}" ]
+    then
+        log "Downloading the latest release"
+
+        run curl -sf --show-error -o "${release_file}" \
+            "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}"
+    else
+        log "Using the cached release archive"
+    fi
+
+    printf "Archive file: %s\n" "${release_file}"
+
+    log "Downloading the checksum file"
+
+    run curl -sf --show-error -o "${release_file_checksum}" \
+        "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}.sha512"
+
+    printf "Checksum file: %s\n" "${release_file_checksum}"
+
+    log "Verifying the release archive"
+
+    if command -v sha512sum
+    then
+        if ! run sha512sum -c "${release_file_checksum}"
+        then
+            fail "The checksum does not match the downloaded release archive"
+            # XXX Guidance - Try blowing away the cached download
+        fi
+    elif command -v shasum
+    then
+        if ! run shasum -a 512 -c "${release_file_checksum}"
+        then
+            fail "The checksum does not match the downloaded release archive"
+            # XXX Guidance - Try blowing away the cached download
+        fi
+    else
+        assert ! ever
+    fi
+}
+
+#
+# Burly stuff above this point. Artemis stuff below this point.
+#
+
 usage() {
     if [ "${#}" != 0 ]
     then
@@ -359,165 +533,26 @@ main() {
 
         print_section "Checking prerequisites"
 
-        log "Checking permission to write to the install directories"
+        check_writable_directories "${artemis_bin_dir}" \
+                                   "$(dirname "${artemis_config_dir}")" \
+                                   "$(dirname "${artemis_home_dir}")" \
+                                   "$(dirname "${artemis_instance_dir}")"
 
-        for dir in "${artemis_bin_dir}" \
-                "$(dirname "${artemis_config_dir}")" \
-                "$(dirname "${artemis_home_dir}")" \
-                "$(dirname "${artemis_instance_dir}")"
-        do
-            log "Checking directory '${dir}'"
+        check_required_programs awk curl grep gzip java nc ps sed tar
 
-            base_dir="${dir}"
+        check_required_program_sha512sum
 
-            while [ ! -e "${base_dir}" ]
-            do
-                base_dir="$(dirname "${base_dir}")"
-            done
+        check_required_ports 1883 5672 8161 61613 61616
 
-            if [ -w "${base_dir}" ]
-            then
-                printf "Directory '%s' is writable\n" "${base_dir}"
-            else
-                printf "Directory '%s' is not writeable\n" "${base_dir}"
-                unwritable_dirs="${unwritable_dirs:-}${base_dir}, "
-            fi
-        done
+        check_required_network_resources "https://dlcdn.apache.org/" "https://downloads.apache.org/"
 
-        if [ -n "${unwritable_dirs:-}" ]
-        then
-            fail "Some install directories are not writable: ${unwritable_dirs%??}"
-            # XXX Guidance
-        fi
-
-        log "Checking for required programs"
-
-        # artemis-service requires ps
-        for program in awk curl grep java nc ps sed tar
-        do
-            log "Checking program '${program}'"
-
-            if ! command -v "${program}"
-            then
-                unavailable_programs="${unavailable_programs:-}${program}, "
-            fi
-        done
-
-        log "Checking for either 'sha512sum' or 'shasum'"
-
-        if ! command -v sha512sum && ! command -v shasum
-        then
-            unavailable_programs="${unavailable_programs:-}, sha512sum (or shasum)"
-        fi
-
-        if [ -n "${unavailable_programs:-}" ]
-        then
-            fail "Some required programs are not available: ${unavailable_programs%??}"
-            # XXX Guidance - Use your OS's package manager to lookup and install things
-        fi
-
-        log "Checking for required ports"
-
-        for port in 1883 5672 8161 61613 61616; do
-            log "Checking port ${port}"
-
-            if ! port_is_available "${port}"
-            then
-                unavailable_ports="${unavailable_ports:-}${port}, "
-            fi
-        done
-
-        if [ -n "${unavailable_ports:-}" ]
-        then
-            fail "Some required ports are in use by something else: ${unavailable_ports%??}"
-            # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
-        fi
-
-        log "Checking for required network resources"
-
-        for url in "https://dlcdn.apache.org/" "https://downloads.apache.org/"
-        do
-            log "Checking URL '${url}'"
-
-            if ! curl -sf --show-error --head "${url}"
-            then
-                unavailable_urls="${unavailable_urls:-}${url}, "
-            fi
-        done
-
-        if [ -n "${unavailable_urls:-}" ]
-        then
-            fail "Some required network resources are not available: ${unavailable_urls%??}"
-            # XXX Guidance
-        fi
-
-        log "Checking the Java installation"
-
-        if ! java --version
-        then
-            fail "The program 'java' is available, but it isn't working"
-            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
-        fi
+        check_java
 
         print_result "OK"
 
         print_section "Downloading and verifying the latest release"
 
-        log "Determining the latest release version"
-
-        release_version_file="${work_dir}/release-version.txt"
-
-        run curl -sf --show-error "https://dlcdn.apache.org/activemq/activemq-artemis/" \
-            | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
-            | sort -t . -k1n -k2n -k3n \
-            | tail -n 1 >| "${release_version_file}"
-
-        release_version="$(cat "${release_version_file}")"
-
-        printf "Release version: %s\n" "${release_version}"
-
-        release_archive_name="apache-artemis-${release_version}-bin.tar.gz"
-        release_archive_file="${work_dir}/${release_archive_name}"
-        release_archive_checksum="${work_dir}/${release_archive_name}.sha512"
-
-        if [ ! -e "${release_archive_file}" ]
-        then
-            log "Downloading the latest release archive"
-
-            run curl -sf --show-error -o "${release_archive_file}" \
-                "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}"
-        else
-            log "Using the cached release archive"
-        fi
-
-        printf "Archive file: %s\n" "${release_archive_file}"
-
-        log "Downloading the checksum file"
-
-        run curl -sf --show-error -o "${release_archive_checksum}" \
-            "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}.sha512"
-
-        printf "Checksum file: %s\n" "${release_archive_checksum}"
-
-        log "Verifying the release archive"
-
-        if command -v sha512sum
-        then
-            if ! run sha512sum -c "${release_archive_checksum}"
-            then
-                fail "The checksum does not match the downloaded release archive"
-                # XXX Guidance - Try blowing away the cached download
-            fi
-        elif command -v shasum
-        then
-            if ! run shasum -a 512 -c "${release_archive_checksum}"
-            then
-                fail "The checksum does not match the downloaded release archive"
-                # XXX Guidance - Try blowing away the cached download
-            fi
-        else
-            assert ! ever
-        fi
+        fetch_latest_apache_release "/activemq/activemq-artemis/"
 
         print_result "OK"
 
@@ -560,7 +595,7 @@ main() {
 
         release_dir="${work_dir}/apache-artemis-${release_version}"
 
-        gzip -dc "${release_archive_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
+        gzip -dc "${release_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
 
         assert -d "${release_dir}"
 
