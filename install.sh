@@ -397,11 +397,11 @@ main() {
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
         do
-            log "Checking program '${program}'\n"
+            log "Checking program '${program}'"
 
             if ! command -v "${program}"
             then
-                missing_programs="${missing_programs:-}${program}, "
+                unavailable_programs="${unavailable_programs:-}${program}, "
             fi
         done
 
@@ -409,12 +409,12 @@ main() {
 
         if ! command -v sha512sum && ! command -v shasum
         then
-            missing_programs="${missing_programs:-}, sha512sum (or shasum)"
+            unavailable_programs="${unavailable_programs:-}, sha512sum (or shasum)"
         fi
 
-        if [ -n "${missing_programs:-}" ]
+        if [ -n "${unavailable_programs:-}" ]
         then
-            fail "Some required programs are not available: ${missing_programs%??}"
+            fail "Some required programs are not available: ${unavailable_programs%??}"
             # XXX Guidance - Use your OS's package manager to lookup and install things
         fi
 
@@ -422,26 +422,44 @@ main() {
 
         if ! java --version
         then
-            fail "The program 'java' is installed, but it isn't working"
+            fail "The program 'java' is available, but it isn't working"
             # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
         fi
+
+        log "Checking for required ports"
 
         for port in 1883 5672 8161 61613 61616; do
             log "Checking port ${port}"
 
             if port_is_taken "${port}"
             then
-                taken_ports="${taken_ports:-}${port}, "
+                unavailable_ports="${unavailable_ports:-}${port}, "
             fi
         done
 
-        if [ -n "${taken_ports:-}" ]
+        if [ -n "${unavailable_ports:-}" ]
         then
-            fail "Some required ports are in use by something else: ${taken_ports%??}"
+            fail "Some required ports are in use by something else: ${unavailable_ports%??}"
             # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
 
-        # XXX Check network access
+        log "Checking for network access"
+
+        for url in "https://dlcdn.apache.org/" "https://downloads.apache.org/"
+        do
+            log "Checking URL '${url}'"
+
+            if ! curl -f --head "${url}"
+            then
+                unavailable_urls="${unavailable_urls:-}${url}, "
+            fi
+        done
+
+        if [ -n "${unavailable_urls:-}" ]
+        then
+            fail "Some required network resources are not available: ${unavailable_urls%??}"
+            # XXX Guidance
+        fi
 
         print_result "OK"
 
@@ -451,7 +469,7 @@ main() {
 
         release_version_file="${work_dir}/release-version.txt"
 
-        run curl -fL https://dlcdn.apache.org/activemq/activemq-artemis/ \
+        run curl -fL "https://dlcdn.apache.org/activemq/activemq-artemis/" \
             | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
             | sort -t . -k1n -k2n -k3n \
             | tail -n 1 >| "${release_version_file}"
@@ -468,8 +486,8 @@ main() {
         then
             log "Downloading the latest release archive"
 
-            run curl -fLo "${release_archive_file}" \
-                "https://www.apache.org/dyn/closer.cgi?filename=activemq/activemq-artemis/${release_version}/${release_archive_name}&action=download"
+            run curl -fo "${release_archive_file}" \
+                "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}"
         else
             log "Using the cached release archive"
         fi
