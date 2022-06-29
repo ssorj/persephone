@@ -38,7 +38,7 @@ assert() {
     # shellcheck disable=SC2244 # We want the split args
     if ! [ "$@" ]
     then
-        printf "$(red "ASSERTION FAILED:") \"%s\"" "${*}"
+        printf "$(red "ASSERTION FAILED:") \"%s\"\n" "${*}"
         exit 1
     fi
 }
@@ -307,58 +307,58 @@ check_java() {
     fi
 }
 
-# func <url-path> -> release_file=<file>
+# func <url-path> -> release_version=<version>, release_file=<file>
 fetch_latest_apache_release() {
-    url_path="${1}"
-    release_version_file="${work_dir}/release-version.txt"
+    _url_path="${1}"
+    _release_version_file="${work_dir}/release-version.txt"
 
     log "Looking up the latest release version"
 
-    run curl -sf --show-error "https://dlcdn.apache.org${url_path}" \
+    run curl -sf --show-error "https://dlcdn.apache.org${_url_path}" \
         | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
         | sort -t . -k1n -k2n -k3n \
-        | tail -n 1 >| "${release_version_file}"
+        | tail -n 1 >| "${_release_version_file}"
 
-    release_version="$(cat "${release_version_file}")"
+    _release_version="$(cat "${_release_version_file}")"
 
-    printf "Release version: %s\n" "${release_version}"
-    printf "Release version file: %s\n" "${release_version_file}"
+    printf "Release version: %s\n" "${_release_version}"
+    printf "Release version file: %s\n" "${_release_version_file}"
 
-    release_file_name="apache-artemis-${release_version}-bin.tar.gz"
-    release_file="${work_dir}/${release_file_name}"
-    release_file_checksum="${release_file}.sha512"
+    _release_file_name="apache-artemis-${_release_version}-bin.tar.gz"
+    _release_file="${work_dir}/${_release_file_name}"
+    _release_file_checksum="${_release_file}.sha512"
 
-    if [ ! -e "${release_file}" ]
+    if [ ! -e "${_release_file}" ]
     then
         log "Downloading the latest release"
 
-        run curl -sf --show-error -o "${release_file}" \
-            "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}"
+        run curl -sf --show-error -o "${_release_file}" \
+            "https://dlcdn.apache.org/activemq/activemq-artemis/${_release_version}/${_release_file_name}"
     else
         log "Using the cached release archive"
     fi
 
-    printf "Archive file: %s\n" "${release_file}"
+    printf "Archive file: %s\n" "${_release_file}"
 
     log "Downloading the checksum file"
 
-    run curl -sf --show-error -o "${release_file_checksum}" \
-        "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}.sha512"
+    run curl -sf --show-error -o "${_release_file_checksum}" \
+        "https://downloads.apache.org/activemq/activemq-artemis/${_release_version}/${_release_file_name}.sha512"
 
-    printf "Checksum file: %s\n" "${release_file_checksum}"
+    printf "Checksum file: %s\n" "${_release_file_checksum}"
 
     log "Verifying the release archive"
 
     if command -v sha512sum
     then
-        if ! run sha512sum -c "${release_file_checksum}"
+        if ! run sha512sum -c "${_release_file_checksum}"
         then
             fail "The checksum does not match the downloaded release archive"
             # XXX Guidance - Try blowing away the cached download
         fi
     elif command -v shasum
     then
-        if ! run shasum -a 512 -c "${release_file_checksum}"
+        if ! run shasum -a 512 -c "${_release_file_checksum}"
         then
             fail "The checksum does not match the downloaded release archive"
             # XXX Guidance - Try blowing away the cached download
@@ -366,6 +366,12 @@ fetch_latest_apache_release() {
     else
         assert ! ever
     fi
+
+    assert -z "${release_version:-}"
+    assert -z "${release_file:-}"
+
+    release_version="${_release_version}"
+    release_file="${_release_file}"
 }
 
 # func <backup-dir> <config-dir> <share-dir> <state-dir> [<bin-file>...]
