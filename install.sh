@@ -201,29 +201,29 @@ init_logging() {
 check_writable_directories() {
     log "Checking for permission to write to the install directories"
 
-    for dir in "$@"
+    for _dir in "$@"
     do
-        log "Checking directory '${dir}'"
+        log "Checking directory '${_dir}'"
 
-        base_dir="${dir}"
+        _base_dir="${_dir}"
 
-        while [ ! -e "${base_dir}" ]
+        while [ ! -e "${_base_dir}" ]
         do
-            base_dir="$(dirname "${base_dir}")"
+            _base_dir="$(dirname "${_base_dir}")"
         done
 
-        if [ -w "${base_dir}" ]
+        if [ -w "${_base_dir}" ]
         then
-            printf "Directory '%s' is writable\n" "${base_dir}"
+            printf "Directory '%s' is writable\n" "${_base_dir}"
         else
-            printf "Directory '%s' is not writeable\n" "${base_dir}"
-            unwritable_dirs="${unwritable_dirs:-}${base_dir}, "
+            printf "Directory '%s' is not writeable\n" "${_base_dir}"
+            _unwritable_dirs="${_unwritable_dirs:-}${_base_dir}, "
         fi
     done
 
-    if [ -n "${unwritable_dirs:-}" ]
+    if [ -n "${_unwritable_dirs:-}" ]
     then
-        fail "Some directories are not writable: ${unwritable_dirs%??}"
+        fail "Some directories are not writable: ${_unwritable_dirs%??}"
         # XXX Guidance
     fi
 }
@@ -231,19 +231,19 @@ check_writable_directories() {
 check_required_programs() {
     log "Checking for required programs"
 
-    for program in "$@"
+    for _program in "$@"
     do
-        log "Checking program '${program}'"
+        log "Checking program '${_program}'"
 
-        if ! command -v "${program}"
+        if ! command -v "${_program}"
         then
-            unavailable_programs="${unavailable_programs:-}${program}, "
+            _unavailable_programs="${unavailable_programs:-}${_program}, "
         fi
     done
 
-    if [ -n "${unavailable_programs:-}" ]
+    if [ -n "${_unavailable_programs:-}" ]
     then
-        fail "Some required programs are not available: ${unavailable_programs%??}"
+        fail "Some required programs are not available: ${_unavailable_programs%??}"
         # XXX Guidance - Use your OS's package manager to lookup and install things
     fi
 }
@@ -260,19 +260,19 @@ check_required_program_sha512sum() {
 check_required_ports() {
     log "Checking for required ports"
 
-    for port in "$@"
+    for _port in "$@"
     do
-        log "Checking port ${port}"
+        log "Checking port ${_port}"
 
-        if ! port_is_available "${port}"
+        if ! port_is_available "${_port}"
         then
-            unavailable_ports="${unavailable_ports:-}${port}, "
+            _unavailable_ports="${_unavailable_ports:-}${_port}, "
         fi
     done
 
-    if [ -n "${unavailable_ports:-}" ]
+    if [ -n "${_unavailable_ports:-}" ]
     then
-        fail "Some required ports are in use by something else: ${unavailable_ports%??}"
+        fail "Some required ports are in use by something else: ${_unavailable_ports%??}"
         # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
     fi
 }
@@ -280,19 +280,19 @@ check_required_ports() {
 check_required_network_resources() {
     log "Checking for required network resources"
 
-    for url in "$@"
+    for _url in "$@"
     do
-        log "Checking URL '${url}'"
+        log "Checking URL '${_url}'"
 
-        if ! curl -sf --show-error --head "${url}"
+        if ! curl -sf --show-error --head "${_url}"
         then
-            unavailable_urls="${unavailable_urls:-}${url}, "
+            _unavailable_urls="${_unavailable_urls:-}${_url}, "
         fi
     done
 
-    if [ -n "${unavailable_urls:-}" ]
+    if [ -n "${_unavailable_urls:-}" ]
     then
-        fail "Some required network resources are not available: ${unavailable_urls%??}"
+        fail "Some required network resources are not available: ${_unavailable_urls%??}"
         # XXX Guidance
     fi
 }
