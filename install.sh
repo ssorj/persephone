@@ -19,17 +19,19 @@
 #
 
 random_number() {
-    echo "$(date +%s)$$"
+    printf "%s%s" "$(date +%s)" "$$"
 }
 
 # func <port>
 port_is_available() {
-    if nc -z localhost "${1}"
+    _port="$1"
+
+    if nc -z localhost "${_port}"
     then
-        printf "Port %s is not available\n" "${1}"
+        printf "Port %s is not available\n" "${_port}"
         return 1
     else
-        printf "Port %s is available\n" "${1}"
+        printf "Port %s is available\n" "${_port}"
         return 0
     fi
 }
@@ -38,30 +40,30 @@ assert() {
     # shellcheck disable=SC2244 # We want the split args
     if ! [ "$@" ]
     then
-        printf "$(red "ASSERTION FAILED:") \"%s\"\n" "${*}"
+        printf "$(red "ASSERTION FAILED:") \"%s\"\n" "$*"
         exit 1
     fi
 }
 
 log() {
-    printf -- "-- %s\n" "${1}"
+    printf -- "-- %s\n" "$1"
 }
 
 run() {
-    printf -- "-- Running '%s'\n" "${*}" >&2
+    printf -- "-- Running '%s'\n" "$*" >&2
     "$@"
 }
 
 red() {
-    printf "\033[0;31m%s\033[0m" "${1}"
+    printf "\033[0;31m%s\033[0m" "$1"
 }
 
 green() {
-    printf "\033[0;32m%s\033[0m" "${1}"
+    printf "\033[0;32m%s\033[0m" "$1"
 }
 
 yellow() {
-    printf "\033[0;33m%s\033[0m" "${1}"
+    printf "\033[0;33m%s\033[0m" "$1"
 }
 
 print() {
@@ -72,31 +74,31 @@ print() {
         return
     fi
 
-    if [ "${1}" = "-n" ]
+    if [ "$1" = "-n" ]
     then
         shift
 
-        printf "   %s" "${1}" >&3
-        printf -- "-- %s" "${1}"
+        printf "   %s" "$1" >&3
+        printf -- "-- %s" "$1"
     else
-        printf "   %s\n" "${1}" >&3
-        printf -- "-- %s\n" "${1}"
+        printf "   %s\n" "$1" >&3
+        printf -- "-- %s\n" "$1"
     fi
 }
 
 print_section() {
-    printf "== %s ==\n\n" "${1}" >&3
-    printf "== %s\n" "${1}"
+    printf "== %s ==\n\n" "$1" >&3
+    printf "== %s\n" "$1"
 }
 
 print_result() {
-    printf "   %s\n\n" "$(green "${1}")" >&3
-    log "Result: $(green "${1}")"
+    printf "   %s\n\n" "$(green "$1")" >&3
+    log "Result: $(green "$1")"
 }
 
 fail() {
-    printf "   %s %s\n\n" "$(red "ERROR:")" "${1}" >&3
-    log "$(red "ERROR:") ${1}"
+    printf "   %s %s\n\n" "$(red "ERROR:")" "$1" >&3
+    log "$(red "ERROR:") $1"
 
     suppress_trouble_report=1
 
@@ -142,37 +144,44 @@ enable_debug_mode() {
 }
 
 handle_exit() {
-    exit_code=$?
+    # This must go first
+    _exit_code=$?
+
+    _log_file="$1"
+    _verbose="$2"
 
     # Restore stdout and stderr
     exec 1>&7
     exec 2>&8
 
     # shellcheck disable=SC2181 # This is intentionally indirect
-    if [ "${exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
+    if [ "${_exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
     then
-        if [ -n "${VERBOSE:-}" ]
+        if [ -n "${_verbose}" ]
         then
-            echo "$(red "TROUBLE!") Something went wrong."
+            printf "%s Something went wrong.\n\n" "$(red "TROUBLE!")"
         else
             printf "   %s Something went wrong.\n\n" "$(red "TROUBLE!")"
             printf "== Log ==\n\n"
 
-            sed -e "s/^/  /" < "${log_file}"
-            echo
+            sed -e "s/^/  /" < "${log_file}" || :
+
+            printf "\n"
         fi
     fi
 }
 
-# func <log_file>
+# func <log-file> <verbose>
 init_logging() {
-    log_file="${1}"
+    _log_file="$1"
+    _verbose="$2"
 
-    trap handle_exit EXIT
+    # shellcheck disable=SC2064 # We want to expand these now, not later
+    trap "handle_exit '${_log_file}' '${_verbose}'" EXIT
 
-    if [ -e "${log_file}" ]
+    if [ -e "${_log_file}" ]
     then
-        mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$(random_number)"
+        mv "${_log_file}" "${_log_file}.$(date +%Y-%m-%d).$(random_number)"
     fi
 
     # Use file descriptor 3 for the default display output
@@ -190,11 +199,11 @@ init_logging() {
     # command output to the log file.
     #
     # XXX Use tee to capture to the log file at the same time?
-    if [ -n "${VERBOSE:-}" ]
+    if [ -n "${_verbose}" ]
     then
         exec 3> /dev/null
     else
-        exec 4> "${log_file}"
+        exec 4> "${_log_file}"
     fi
 }
 
@@ -307,10 +316,21 @@ check_java() {
     fi
 }
 
-# func <url-path> -> release_version=<version>, release_file=<file>
+# func <url-path> <output-dir> -> release_version=<version>, release_file=<file>
 fetch_latest_apache_release() {
-    _url_path="${1}"
-    _release_version_file="${work_dir}/release-version.txt"
+    _url_path="$1"
+    _output_dir="$2"
+
+    case "${_url_path}" in
+        /*/)
+            :
+            ;;
+        *)
+            assert ! cool
+            ;;
+    esac
+
+    _release_version_file="${_output_dir}/release-version.txt"
 
     log "Looking up the latest release version"
 
@@ -325,7 +345,7 @@ fetch_latest_apache_release() {
     printf "Release version file: %s\n" "${_release_version_file}"
 
     _release_file_name="apache-artemis-${_release_version}-bin.tar.gz"
-    _release_file="${work_dir}/${_release_file_name}"
+    _release_file="${_output_dir}/${_release_file_name}"
     _release_file_checksum="${_release_file}.sha512"
 
     if [ ! -e "${_release_file}" ]
@@ -376,10 +396,10 @@ fetch_latest_apache_release() {
 
 # func <backup-dir> <config-dir> <share-dir> <state-dir> [<bin-file>...]
 save_backup() {
-    _backup_dir="${1}"
-    _config_dir="${2}"
-    _share_dir="${3}"
-    _state_dir="${4}"
+    _backup_dir="$1"
+    _config_dir="$2"
+    _share_dir="$3"
+    _state_dir="$4"
 
     shift 4
 
@@ -459,9 +479,9 @@ EOF
 
 # func <script-file> <artemis-instance-dir>
 create_artemis_instance_script() {
-    _script_file="${1}"
+    _script_file="$1"
     _script_name="$(basename "${_script_file}")"
-    _artemis_instance_dir="${2}"
+    _artemis_instance_dir="$2"
 
     cat > "${_script_file}" <<EOF
 #!/bin/sh
@@ -471,7 +491,7 @@ export ARTEMIS_INSTANCE=${_artemis_instance_dir}
 exec "\${ARTEMIS_INSTANCE}/bin/${_script_name}" "\$@"
 EOF
 
-    chmod +x "${1}"
+    chmod +x "$1"
 }
 
 main() {
@@ -483,6 +503,7 @@ main() {
     fi
 
     scheme="home"
+    verbose=
     interactive=1
 
     while getopts :hs:vy option
@@ -495,7 +516,7 @@ main() {
                 scheme="${OPTARG}"
                 ;;
             v)
-                VERBOSE=1
+                verbose=1
                 ;;
             y)
                 interactive=
@@ -540,7 +561,7 @@ main() {
     mkdir -p "${work_dir}"
     cd "${work_dir}"
 
-    init_logging "${log_file}"
+    init_logging "${log_file}" "${verbose}"
 
     {
         backup_dir="${work_dir}/backup"
@@ -609,7 +630,7 @@ main() {
 
         print_section "Downloading and verifying the latest release"
 
-        fetch_latest_apache_release "/activemq/activemq-artemis/"
+        fetch_latest_apache_release "/activemq/activemq-artemis/" "${work_dir}"
 
         print_result "OK"
 
