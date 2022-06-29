@@ -36,25 +36,39 @@ port_is_available() {
     fi
 }
 
-# XXX want ends_with, starts_with
-# XXX output dirs need to exist or be created
+# func <string> <glob>
+string_is_match() {
+    set -x
+
+    _string="$1"
+    _glob="$2"
+
+    # shellcheck disable=SC2254 # We want the glob
+    case "${_string}" in
+        ${_glob})
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 # func <archive> <output-dir>
-extract_archive_files() {
+extract_archive() {
     _archive="$1"
     _output_dir="$2"
 
-    assert -e "${_archive}"
-    assert -d "${_output_dir}"
+    assert test -f "${_archive}"
+    assert test -d "${_output_dir}"
 
     gzip -dc "${_archive}" | (cd "${_output_dir}" && tar xf -)
 }
 
 assert() {
-    # shellcheck disable=SC2244 # We want the split args
-    if ! [ "$@" ]
+    if ! "$@"
     then
-        printf "$(red "ASSERTION FAILED:") \"%s\"\n" "$*"
+        printf "%b '%s'\n" "$(red "ASSERTION FAILED:")" "$*"
         exit 1
     fi
 }
@@ -131,7 +145,7 @@ enable_strict_mode() {
         # shellcheck disable=SC3040,SC3041 # We know this is Bash in this case
         set -E -o pipefail -o posix +o braceexpand
 
-        assert -n "${POSIXLY_CORRECT}"
+        assert test -n "${POSIXLY_CORRECT}"
 
         # Restrict echo behavior
         # shellcheck disable=SC3044 # Intentionally Bash-specific
@@ -335,14 +349,8 @@ fetch_latest_apache_release() {
     _url_path="$1"
     _output_dir="$2"
 
-    case "${_url_path}" in
-        /*/)
-            :
-            ;;
-        *)
-            assert ! cool
-            ;;
-    esac
+    assert string_is_match "${_url_path}" "/*/"
+    assert test -d "${_output_dir}"
 
     _release_version_file="${_output_dir}/release-version.txt"
 
@@ -398,11 +406,11 @@ fetch_latest_apache_release() {
             # XXX Guidance - Try blowing away the cached download
         fi
     else
-        assert ! ever
+        assert test ! ever
     fi
 
-    assert -z "${release_version:-}"
-    assert -z "${release_file:-}"
+    assert test -z "${release_version:-}"
+    assert test -z "${release_file:-}"
 
     release_version="${_release_version}"
     release_file="${_release_file}"
@@ -451,7 +459,7 @@ save_backup() {
     done
 
     # XXX Not quite right?
-    assert -d "${_backup_dir}"
+    assert test -d "${_backup_dir}"
 }
 
 #
@@ -665,13 +673,13 @@ main() {
 
         release_dir="${work_dir}/apache-artemis-${release_version}"
 
-        extract_archive_files "${release_file}" "${work_dir}"
+        extract_archive "${release_file}" "${work_dir}"
 
-        assert -d "${release_dir}"
+        assert test -d "${release_dir}"
 
         log "Moving the release dir to its install location"
 
-        assert ! -e "${artemis_home_dir}"
+        assert test ! -e "${artemis_home_dir}"
 
         mkdir -p "$(dirname "${artemis_home_dir}")"
         mv "${release_dir}" "${artemis_home_dir}"
