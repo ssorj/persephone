@@ -36,6 +36,20 @@ port_is_available() {
     fi
 }
 
+# XXX want ends_with, starts_with
+# XXX output dirs need to exist or be created
+
+# func <archive> <output-dir>
+extract_archive_files() {
+    _archive="$1"
+    _output_dir="$2"
+
+    assert -e "${_archive}"
+    assert -d "${_output_dir}"
+
+    gzip -dc "${_archive}" | (cd "${_output_dir}" && tar xf -)
+}
+
 assert() {
     # shellcheck disable=SC2244 # We want the split args
     if ! [ "$@" ]
@@ -651,7 +665,7 @@ main() {
 
         release_dir="${work_dir}/apache-artemis-${release_version}"
 
-        gzip -dc "${release_file}" | (cd "$(dirname "${release_dir}")" && tar xf -)
+        extract_archive_files "${release_file}" "${work_dir}"
 
         assert -d "${release_dir}"
 
