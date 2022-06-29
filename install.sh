@@ -272,7 +272,7 @@ main() {
                 interactive=
                 ;;
             *)
-                usage "Option \"${OPTARG}\" is unknown"
+                usage "Unknown option: ${OPTARG}"
                 ;;
         esac
     done
@@ -301,7 +301,7 @@ main() {
             artemis_instance_dir="/var/opt/artemis"
             ;;
         *)
-            usage "Installation scheme \"${scheme}\" is unknown"
+            usage "Unknown installation scheme: ${scheme}"
             ;;
     esac
 
@@ -590,7 +590,6 @@ main() {
         print "ActiveMQ Artemis is now installed."
         print
         print "    Version:                ${release_version}"
-        print "    The \"artemis\" command:  ${artemis_bin_dir}/artemis"
         print "    Config files:           ${artemis_config_dir}"
         print "    Log files:              ${artemis_instance_dir}/log"
         print "    Data files:             ${artemis_instance_dir}/data"
@@ -601,6 +600,26 @@ main() {
         fi
 
         print
+
+        print "The artemis command is available at:"
+        print
+        print "    ${artemis_bin_dir}/artemis"
+        print
+
+        if [ "$(command -v artemis)" != "${artemis_bin_dir}/artemis" ]
+        then
+            print "$(yellow "NOTE:") The artemis command is not on your path.  To add it, use:"
+            print
+
+            if [ "${scheme}" = "home" ]
+            then
+                print "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+            else
+                print "    export PATH=\"${artemis_bin_dir}:\$PATH\""
+            fi
+
+            print
+        fi
 
         print "If you are learning about Artemis, see the getting started guide:"
         print
@@ -614,21 +633,10 @@ main() {
         print
         print "    curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh"
         print
-
-        if [ "$(command -v artemis)" = "${artemis_bin_dir}/artemis" ]
-        then
-            print "To start the broker, use:"
-            print
-            print "    artemis run"
-            print
-        else
-            print "$(yellow "NOTE:") The \"artemis\" command is not on your path.  To add it, use:"
-            print
-            print "    export PATH=\"${artemis_bin_dir}:\$PATH\""
-            print
-            print "Once added, use \"artemis run\" to start the broker."
-            print
-        fi
+        print "To start the broker, use:"
+        print
+        print "    artemis run"
+        print
     } >&4 2>&4
 }
 
