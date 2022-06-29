@@ -38,8 +38,6 @@ port_is_available() {
 
 # func <string> <glob>
 string_is_match() {
-    set -x
-
     _string="$1"
     _glob="$2"
 
