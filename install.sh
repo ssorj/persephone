@@ -23,16 +23,14 @@ random_number() {
 }
 
 # func <port>
-port_is_taken() {
-    # if lsof -PiTCP -sTCP:LISTEN | grep ":${1}"
-    # if netstat -an | grep LISTEN | grep ":${1}"
+port_is_available() {
     if nc -z localhost "${1}"
     then
-        echo "Port ${1} is taken"
-        return 0
-    else
-        echo "Port ${1} is free"
+        printf "Port %s is not available\n" "${1}"
         return 1
+    else
+        printf "Port %s is available\n" "${1}"
+        return 0
     fi
 }
 
@@ -418,20 +416,12 @@ main() {
             # XXX Guidance - Use your OS's package manager to lookup and install things
         fi
 
-        log "Checking the Java installation"
-
-        if ! java --version
-        then
-            fail "The program 'java' is available, but it isn't working"
-            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
-        fi
-
         log "Checking for required ports"
 
         for port in 1883 5672 8161 61613 61616; do
             log "Checking port ${port}"
 
-            if port_is_taken "${port}"
+            if ! port_is_available "${port}"
             then
                 unavailable_ports="${unavailable_ports:-}${port}, "
             fi
@@ -443,13 +433,13 @@ main() {
             # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
 
-        log "Checking for network access"
+        log "Checking for required network resources"
 
         for url in "https://dlcdn.apache.org/" "https://downloads.apache.org/"
         do
             log "Checking URL '${url}'"
 
-            if ! curl -f --head "${url}"
+            if ! curl -sf --show-error --head "${url}"
             then
                 unavailable_urls="${unavailable_urls:-}${url}, "
             fi
@@ -461,6 +451,14 @@ main() {
             # XXX Guidance
         fi
 
+        log "Checking the Java installation"
+
+        if ! java --version
+        then
+            fail "The program 'java' is available, but it isn't working"
+            # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
+        fi
+
         print_result "OK"
 
         print_section "Downloading and verifying the latest release"
@@ -469,14 +467,14 @@ main() {
 
         release_version_file="${work_dir}/release-version.txt"
 
-        run curl -fL "https://dlcdn.apache.org/activemq/activemq-artemis/" \
+        run curl -sf --show-error "https://dlcdn.apache.org/activemq/activemq-artemis/" \
             | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
             | sort -t . -k1n -k2n -k3n \
             | tail -n 1 >| "${release_version_file}"
 
         release_version="$(cat "${release_version_file}")"
 
-        log "Release version: ${release_version}"
+        printf "Release version: %s\n" "${release_version}"
 
         release_archive_name="apache-artemis-${release_version}-bin.tar.gz"
         release_archive_file="${work_dir}/${release_archive_name}"
@@ -486,20 +484,20 @@ main() {
         then
             log "Downloading the latest release archive"
 
-            run curl -fo "${release_archive_file}" \
+            run curl -sf --show-error -o "${release_archive_file}" \
                 "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}"
         else
             log "Using the cached release archive"
         fi
 
-        log "Archive file: ${release_archive_file}"
+        printf "Archive file: %s\n" "${release_archive_file}"
 
         log "Downloading the checksum file"
 
-        run curl -fo "${release_archive_checksum}" \
+        run curl -sf --show-error -o "${release_archive_checksum}" \
             "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_archive_name}.sha512"
 
-        log "Checksum file: ${release_archive_checksum}"
+        printf "Checksum file: %s\n" "${release_archive_checksum}"
 
         log "Verifying the release archive"
 
@@ -605,7 +603,7 @@ main() {
 
         run "${artemis_bin_dir}/artemis-service" start
 
-        while ! port_is_taken 61616
+        while port_is_available 61616
         do
             log "Waiting for the broker to start"
             sleep 2
@@ -618,7 +616,7 @@ main() {
         # CI, so I tolerate a failure here
         run "${artemis_bin_dir}/artemis-service" stop || :
 
-        while port_is_taken 61616
+        while ! port_is_available 61616
         do
             log "Waiting for the broker to exit"
             sleep 2

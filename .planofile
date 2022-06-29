@@ -6,31 +6,37 @@ def test(app, shell="sh", verbose=False, debug=False):
     if not CYGWIN:
         check_program(shell)
 
-    with working_env():
-        if verbose:
-            ENV["VERBOSE"] = "1"
+    if verbose:
+        ENV["VERBOSE"] = "1"
 
-        if debug:
-            ENV["DEBUG"] = "1"
-
-        run(f"{shell} install.sh -y")
-        run(f"{shell} uninstall.sh -y")
-
-@command
-def big_test(app, verbose=False, debug=False):
     if debug:
         ENV["DEBUG"] = "1"
 
-    test(app, verbose=True)
-    test(app, verbose=False)
+    try:
+        run(f"{shell} install.sh -y")
+        run(f"{shell} uninstall.sh -y")
+    finally:
+        if verbose:
+            del ENV["VERBOSE"]
 
-    test(app, debug=True)
-    test(app, debug=False)
+        if debug:
+            del ENV["DEBUG"]
+
+@command
+def big_test(app, verbose=False, debug=False):
+    test(app, verbose=True, debug=debug)
+    test(app, verbose=False, debug=debug)
+
+    test(app, verbose=verbose, debug=True)
+    test(app, verbose=verbose, debug=False)
+
+    for shell in "ash", "bash", "dash", "ksh", "zsh":
+        if CYGWIN or not which(shell):
+            continue
+
+        test(app, shell=shell, verbose=verbose, debug=debug)
 
     with working_env():
-        if verbose:
-            ENV["VERBOSE"] = "1"
-
         run(f"sh uninstall.sh -y") # No existing installation
 
         run(f"sh install.sh -y") # No existing installation and no existing backup
@@ -40,15 +46,6 @@ def big_test(app, verbose=False, debug=False):
         run(f"sh uninstall.sh -y") # No existing backup
         run(f"sh uninstall.sh -y") # Creates a backup
         run(f"sh uninstall.sh -y") # Backs up the backup
-
-    if CYGWIN:
-        return
-
-    for shell in "ash", "bash", "dash", "ksh", "zsh":
-        if not which(shell):
-            continue
-
-        test(app, shell=shell, verbose=verbose, debug=debug)
 
 @command
 def lint(app):

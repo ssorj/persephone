@@ -1,3 +1,6 @@
+# if lsof -PiTCP -sTCP:LISTEN | grep ":${1}"
+# if netstat -an | grep LISTEN | grep ":${1}"
+
 # func <file> <line-number> <lines>...
 file_append_lines_at() {
     file="${1}"
