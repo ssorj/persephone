@@ -363,11 +363,14 @@ main() {
 
         log "Checking permission to write to the install location"
 
-        if [ ! -w "$(dirname "${artemis_home_dir}")" ]
-        then
-            fail "The current user doesn't have permission to write to the install location"
-            # XXX Guidance
-        fi
+        for dir in "${artemis_bin_dir}" "${artemis_config_dir}" "${artemis_home_dir}" "${artemis_instance_dir}"
+        do
+            if ! mkdir -p "${dir}" || [ ! -w "${dir}" ]
+            then
+                fail "The current user doesn't have permission to write to the install location"
+                # XXX Guidance
+            fi
+        done
 
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
