@@ -98,7 +98,7 @@ print_result() {
 
 fail() {
     printf "   %s %s\n\n" "$(red "ERROR:")" "${1}" >&3
-    log "ERROR: %s" "${1}"
+    log "$(red "ERROR:") ${1}"
 
     suppress_trouble_report=1
 
@@ -359,18 +359,40 @@ main() {
             print
         fi
 
-        print_section "Checking for required tools and resources"
+        print_section "Checking prerequisites"
 
-        log "Checking permission to write to the install location"
+        log "Checking permission to write to the install directories"
 
-        for dir in "${artemis_bin_dir}" "${artemis_config_dir}" "${artemis_home_dir}" "${artemis_instance_dir}"
+        for dir in "${artemis_bin_dir}" \
+                "$(dirname "${artemis_config_dir}")" \
+                "$(dirname "${artemis_home_dir}")" \
+                "$(dirname "${artemis_instance_dir}")"
         do
-            if ! mkdir -p "${dir}" || [ ! -w "${dir}" ]
+            log "Checking directory '${dir}'"
+
+            base_dir="${dir}"
+
+            while [ ! -e "${base_dir}" ]
+            do
+                base_dir="$(dirname "${base_dir}")"
+            done
+
+            if [ -w "${base_dir}" ]
             then
-                fail "The current user doesn't have permission to write to the install location"
-                # XXX Guidance
+                printf "Directory '%s' is writable\n" "${base_dir}"
+            else
+                printf "Directory '%s' is not writeable\n" "${base_dir}"
+                unwritable_dirs="${unwritable_dirs:-}${base_dir}, "
             fi
         done
+
+        if [ -n "${unwritable_dirs:-}" ]
+        then
+            fail "Some install directories are not writable: ${unwritable_dirs%??}"
+            # XXX Guidance
+        fi
+
+        log "Checking for required programs"
 
         # artemis-service requires ps
         for program in awk curl grep java nc ps sed tar
@@ -379,7 +401,7 @@ main() {
 
             if ! command -v "${program}"
             then
-                missing="${missing:-}${program}, "
+                missing_programs="${missing_programs:-}${program}, "
             fi
         done
 
@@ -387,12 +409,12 @@ main() {
 
         if ! command -v sha512sum && ! command -v shasum
         then
-            missing="${missing:-}, sha512sum (or shasum)"
+            missing_programs="${missing_programs:-}, sha512sum (or shasum)"
         fi
 
-        if [ -n "${missing:-}" ]
+        if [ -n "${missing_programs:-}" ]
         then
-            fail "Some required programs are not available: ${missing%??}"
+            fail "Some required programs are not available: ${missing_programs%??}"
             # XXX Guidance - Use your OS's package manager to lookup and install things
         fi
 
@@ -409,13 +431,13 @@ main() {
 
             if port_is_taken "${port}"
             then
-                taken="${taken:-}${port}, "
+                taken_ports="${taken_ports:-}${port}, "
             fi
         done
 
-        if [ -n "${taken:-}" ]
+        if [ -n "${taken_ports:-}" ]
         then
-            fail "Some required ports are in use by something else: ${taken%??}"
+            fail "Some required ports are in use by something else: ${taken_ports%??}"
             # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
         fi
 
