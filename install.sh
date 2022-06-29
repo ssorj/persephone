@@ -368,18 +368,67 @@ fetch_latest_apache_release() {
     fi
 }
 
+# func <backup-dir> <config-dir> <share-dir> <state-dir> [<bin-file>...]
+save_backup() {
+    _backup_dir="${1}"
+    _config_dir="${2}"
+    _share_dir="${3}"
+    _state_dir="${4}"
+
+    shift 4
+
+    log "Saving the previous config dir"
+
+    if [ -e "${_config_dir}" ]
+    then
+        mkdir -p "${_backup_dir}/config"
+        mv "${_config_dir}" "${_backup_dir}/config"
+    fi
+
+    log "Saving the previous share dir"
+
+    if [ -e "${_share_dir}" ]
+    then
+        mkdir -p "${_backup_dir}/share"
+        mv "${_share_dir}" "${_backup_dir}/share"
+    fi
+
+    log "Saving the previous state dir"
+
+    if [ -e "${_state_dir}" ]
+    then
+        mkdir -p "${_backup_dir}/state"
+        mv "${_state_dir}" "${_backup_dir}/state"
+    fi
+
+    for _bin_file in "$@"
+    do
+        if [ -e "${_bin_file}" ]
+        then
+            mkdir -p "${_backup_dir}/bin"
+            mv "${_bin_file}" "${_backup_dir}/bin"
+        fi
+    done
+
+    # XXX Not quite right?
+    assert -d "${_backup_dir}"
+}
+
 #
-# Burly stuff above this point. Artemis stuff below this point.
+# Burly stuff above this point.  Artemis stuff below this point.
 #
 
 usage() {
-    if [ "${#}" != 0 ]
+    _prog="${0}"
+    _error="${1:-}"
+
+    if [ -n "${_error}" ]
     then
         printf "%b %s\n\n" "$(red "ERROR:")" "${*}"
     fi
 
     cat <<EOF
-Usage: ${0} [-hvy] [-s <scheme>]
+Usage: ${_prog} [-hvy] [-s <scheme>]
 
 A script that installs ActiveMQ Artemis
 
@@ -394,24 +443,26 @@ Installation schemes:
   opt           Install to /opt, /var/opt, and /etc/opt
 EOF
 
-    if [ "${#}" = 0 ]
+    if [ -n "${_error}" ]
     then
-        exit 0
-    else
         exit 1
     fi
+
+    exit 0
 }
 
-# func <script> <artemis-instance-dir>
+# func <script-file> <artemis-instance-dir>
 create_artemis_instance_script() {
-    script_name="$(basename "${1}")"
+    _script_file="${1}"
+    _script_name="$(basename "${_script_file}")"
+    _artemis_instance_dir="${2}"
 
-    cat > "${1}" <<EOF
+    cat > "${_script_file}" <<EOF
 #!/bin/sh
 
-export ARTEMIS_INSTANCE=${2}
+export ARTEMIS_INSTANCE=${_artemis_instance_dir}
 
-exec "\${ARTEMIS_INSTANCE}/bin/${script_name}" "\$@"
+exec "\${ARTEMIS_INSTANCE}/bin/${_script_name}" "\$@"
 EOF
 
     chmod +x "${1}"
@@ -560,31 +611,9 @@ main() {
         then
             print_section "Saving the existing installation to a backup"
 
-            log "Saving the previous config dir"
-
-            if [ -e "${artemis_config_dir}" ]
-            then
-                mkdir -p "${backup_dir}/config"
-                mv "${artemis_config_dir}" "${backup_dir}/config"
-            fi
-
-            log "Saving the previous dist dir"
-
-            if [ -e "${artemis_home_dir}" ]
-            then
-                mkdir -p "${backup_dir}/share"
-                mv "${artemis_home_dir}" "${backup_dir}/share"
-            fi
-
-            log "Saving the previous instance dir"
-
-            if [ -e "${artemis_instance_dir}" ]
-            then
-                mkdir -p "${backup_dir}/state"
-                mv "${artemis_instance_dir}" "${backup_dir}/state"
-            fi
-
-            assert -d "${backup_dir}"
+            save_backup "${backup_dir}" \
+                        "${artemis_config_dir}" "${artemis_home_dir}" "${artemis_instance_dir}" \
+                        "${artemis_bin_dir}/artemis" "${artemis_bin_dir}/artemis-service"
 
             print_result "OK"
         fi
