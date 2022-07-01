@@ -28,19 +28,18 @@ program_is_available() {
 }
 
 # func <port>
-port_is_free() {
+port_is_active() {
     _port="$1"
 
     assert program_is_available nc
 
     if nc -z localhost "${_port}"
     then
-        # XXX move these printfs
         printf "Port %s is active\n" "${_port}"
-        return 1
+        return 0
     else
         printf "Port %s is free\n" "${_port}"
-        return 0
+        return 1
     fi
 }
 
@@ -51,7 +50,7 @@ await_port_is_active() {
 
     log "Waiting for port ${_port} to open"
 
-    while port_is_free 61616
+    while ! port_is_active 61616
     do
         _i=$((_i + 1))
 
@@ -72,7 +71,7 @@ await_port_is_free() {
 
     log "Waiting for port ${_port} to close"
 
-    while ! port_is_free 61616
+    while port_is_active 61616
     do
         _i=$((_i + 1))
 
@@ -123,7 +122,7 @@ assert() {
     _location="$0"
 
     # shellcheck disable=SC2128 # We want only the first element of the array
-    if [ -n "${BASH_LINENO}" ]
+    if [ -n "${BASH_LINENO:-}" ]
     then
         _location="$0:${BASH_LINENO}:"
     fi
@@ -356,7 +355,7 @@ check_required_ports() {
     do
         log "Checking port ${_port}"
 
-        if ! port_is_free "${_port}"
+        if port_is_active "${_port}"
         then
             _unavailable_ports="${_unavailable_ports:-}${_port}, "
         fi
@@ -521,7 +520,6 @@ save_backup() {
 #
 
 usage() {
-    _prog="${0}"
     _error="${1:-}"
 
     if [ -n "${_error}" ]
@@ -530,7 +528,7 @@ usage() {
     fi
 
     cat <<EOF
-Usage: ${_prog} [-hvy] [-s <scheme>]
+Usage: ${0} [-hvy] [-s <scheme>]
 
 A script that installs ActiveMQ Artemis
 
