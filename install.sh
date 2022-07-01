@@ -18,8 +18,9 @@
 # under the License.
 #
 
-random_number() {
-    printf "%s%s" "$(date +%s)" "$$"
+# func <program>
+program_is_available() {
+    command -v "${1}"
 }
 
 # func <port>
@@ -28,6 +29,7 @@ port_is_available() {
 
     if nc -z localhost "${_port}"
     then
+        # XXX move these printfs
         printf "Port %s is not available\n" "${_port}"
         return 1
     else
@@ -52,15 +54,21 @@ string_is_match() {
     esac
 }
 
-# func <archive> <output-dir>
+random_number() {
+    printf "%s%s" "$(date +%s)" "$$"
+}
+
+# func <archive-file> <output-dir>
 extract_archive() {
-    _archive="$1"
+    _archive_file="$1"
     _output_dir="$2"
 
-    assert test -f "${_archive}"
+    assert test -f "${_archive_file}"
     assert test -d "${_output_dir}"
+    assert program_is_available gzip
+    assert program_is_available tar
 
-    gzip -dc "${_archive}" | (cd "${_output_dir}" && tar xf -)
+    gzip -dc "${_archive_file}" | (cd "${_output_dir}" && tar xf -)
 }
 
 assert() {
@@ -148,13 +156,6 @@ enable_strict_mode() {
         # Restrict echo behavior
         # shellcheck disable=SC3044 # Intentionally Bash-specific
         shopt -s xpg_echo
-    fi
-
-    if [ -n "${ZSH_VERSION:-}" ]
-    then
-        # Get standard POSIX behavior for appends
-        # shellcheck disable=SC3040 # Intentionally Zsh-specific
-        set -o append_create
     fi
 }
 

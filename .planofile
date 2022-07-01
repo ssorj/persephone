@@ -6,19 +6,13 @@ def test(app, shell="sh", verbose=False, debug=False):
     if not CYGWIN:
         check_program(shell)
 
-    if verbose:
-        ENV["VERBOSE"] = "1"
-
     if debug:
         ENV["DEBUG"] = "1"
 
     try:
-        run(f"{shell} install.sh -y")
-        run(f"{shell} uninstall.sh -y")
+        run(f"{shell} install.sh -y {'-v' if verbose else ''}")
+        run(f"{shell} uninstall.sh -y {'-v' if verbose else ''}")
     finally:
-        if verbose:
-            del ENV["VERBOSE"]
-
         if debug:
             del ENV["DEBUG"]
 
@@ -30,7 +24,7 @@ def big_test(app, verbose=False, debug=False):
     test(app, verbose=verbose, debug=True)
     test(app, verbose=verbose, debug=False)
 
-    for shell in "ash", "bash", "dash", "ksh", "zsh":
+    for shell in "ash", "bash", "dash", "ksh":
         if CYGWIN or not which(shell):
             continue
 
