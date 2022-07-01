@@ -405,6 +405,10 @@ fetch_latest_apache_release() {
 
     assert string_is_match "${_url_path}" "/*/"
     assert test -d "${_output_dir}"
+    assert program_is_available curl
+    assert program_is_available awk
+    assert program_is_available sort
+    assert program_is_available tail
 
     _release_version_file="${_output_dir}/release-version.txt"
 
@@ -460,7 +464,7 @@ fetch_latest_apache_release() {
             # XXX Guidance - Try blowing away the cached download
         fi
     else
-        assert test ! ever
+        assert false
     fi
 
     assert test -z "${release_version:-}"
