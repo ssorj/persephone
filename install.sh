@@ -28,7 +28,7 @@ program_is_available() {
 }
 
 # func <port>
-port_is_available() {
+port_is_free() {
     _port="$1"
 
     assert program_is_available nc
@@ -36,12 +36,54 @@ port_is_available() {
     if nc -z localhost "${_port}"
     then
         # XXX move these printfs
-        printf "Port %s is not available\n" "${_port}"
+        printf "Port %s is active\n" "${_port}"
         return 1
     else
-        printf "Port %s is available\n" "${_port}"
+        printf "Port %s is free\n" "${_port}"
         return 0
     fi
+}
+
+# func <port>
+await_port_is_active() {
+    _port="$1"
+    _i=0
+
+    log "Waiting for port ${_port} to open"
+
+    while port_is_free 61616
+    do
+        _i=$((_i + 1))
+
+        if [ "${_i}" = 30 ]
+        then
+            log "Timed out waiting for port ${_port} to open"
+            return 1
+        fi
+
+        sleep 2
+    done
+}
+
+# func <port>
+await_port_is_free() {
+    _port="$1"
+    _i=0
+
+    log "Waiting for port ${_port} to close"
+
+    while ! port_is_free 61616
+    do
+        _i=$((_i + 1))
+
+        if [ "${_i}" = 30 ]
+        then
+            log "Timed out waiting for port ${_port} to close"
+            return 1
+        fi
+
+        sleep 2
+    done
 }
 
 # func <string> <glob>
@@ -86,7 +128,7 @@ assert() {
         _location="$0:${BASH_LINENO}:"
     fi
 
-    if ! "$@"
+    if ! "$@" > /dev/null 2>&1
     then
         printf "%s %s assert %s\n" "$(red "ASSERTION FAILED:")" "$(yellow "${_location}")" "$*"
         exit 1
@@ -314,7 +356,7 @@ check_required_ports() {
     do
         log "Checking port ${_port}"
 
-        if ! port_is_available "${_port}"
+        if ! port_is_free "${_port}"
         then
             _unavailable_ports="${_unavailable_ports:-}${_port}, "
         fi
@@ -732,11 +774,7 @@ main() {
 
         run "${artemis_bin_dir}/artemis-service" start
 
-        while port_is_available 61616
-        do
-            log "Waiting for the broker to start"
-            sleep 2
-        done
+        await_port_is_active 61616
 
         run "${artemis_bin_dir}/artemis" producer --silent --verbose --message-count 1
         run "${artemis_bin_dir}/artemis" consumer --silent --verbose --message-count 1
@@ -745,11 +783,7 @@ main() {
         # CI, so I tolerate a failure here
         run "${artemis_bin_dir}/artemis-service" stop || :
 
-        while ! port_is_available 61616
-        do
-            log "Waiting for the broker to exit"
-            sleep 2
-        done
+        await_port_is_free 61616
 
         print_result "OK"
 
