@@ -27,6 +27,8 @@ program_is_available() {
 port_is_available() {
     _port="$1"
 
+    assert program_is_available nc
+
     if nc -z localhost "${_port}"
     then
         # XXX move these printfs
@@ -72,9 +74,17 @@ extract_archive() {
 }
 
 assert() {
+    _location="$0"
+
+    # shellcheck disable=SC2128 # We want only the first element of the array
+    if [ -n "${BASH_LINENO}" ]
+    then
+        _location="$0:${BASH_LINENO}:"
+    fi
+
     if ! "$@"
     then
-        printf "%b '%s'\n" "$(red "ASSERTION FAILED:")" "$*"
+        printf "%s %s assert %s\n" "$(red "ASSERTION FAILED:")" "$(yellow "${_location}")" "$*"
         exit 1
     fi
 }
