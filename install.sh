@@ -20,7 +20,11 @@
 
 # func <program>
 program_is_available() {
-    command -v "${1}"
+    _program="${1}"
+
+    assert test -n "${_program}"
+
+    command -v "${_program}"
 }
 
 # func <port>
@@ -98,8 +102,12 @@ run() {
     "$@"
 }
 
+bold() {
+    printf "\033[1m%s\033[0m" "$1"
+}
+
 red() {
-    printf "\033[0;31m%s\033[0m" "$1"
+    printf "\033[1;31m%s\033[0m" "$1"
 }
 
 green() {
@@ -131,7 +139,7 @@ print() {
 }
 
 print_section() {
-    printf "== %s ==\n\n" "$1" >&3
+    printf "== %s ==\n\n" "$(bold "$1")" >&3
     printf "== %s\n" "$1"
 }
 
@@ -162,10 +170,6 @@ enable_strict_mode() {
         set -E -o pipefail -o posix +o braceexpand
 
         assert test -n "${POSIXLY_CORRECT}"
-
-        # Restrict echo behavior
-        # shellcheck disable=SC3044 # Intentionally Bash-specific
-        shopt -s xpg_echo
     fi
 }
 
@@ -467,7 +471,6 @@ save_backup() {
         fi
     done
 
-    # XXX Not quite right?
     assert test -d "${_backup_dir}"
 }
 
@@ -514,6 +517,8 @@ create_artemis_instance_script() {
     _script_name="$(basename "${_script_file}")"
     _artemis_instance_dir="$2"
 
+    assert test -d "${_artemis_instance_dir}"
+
     cat > "${_script_file}" <<EOF
 #!/bin/sh
 
@@ -523,6 +528,8 @@ exec "\${ARTEMIS_INSTANCE}/bin/${_script_name}" "\$@"
 EOF
 
     chmod +x "$1"
+
+    assert test -x "${_script_file}"
 }
 
 main() {
