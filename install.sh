@@ -806,14 +806,16 @@ main() {
 
         print "ActiveMQ Artemis is now installed."
         print
-        print "    Version:                ${release_version}"
-        print "    Config files:           ${artemis_config_dir}"
-        print "    Log files:              ${artemis_instance_dir}/log"
-        print "    Data files:             ${artemis_instance_dir}/data"
+        print "    Version:           ${release_version}"
+        print "    Config files:      ${artemis_config_dir}"
+        print "    Log files:         ${artemis_instance_dir}/log"
+        print "    Data files:        ${artemis_instance_dir}/data"
+        print "    Console user:      example"
+        print "    Console password:  ${password}"
 
         if [ -e "${backup_dir}" ]
         then
-            print "    Backup:                 ${backup_dir}"
+            print "    Backup:            ${backup_dir}"
         fi
 
         print
