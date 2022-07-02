@@ -129,7 +129,7 @@ assert() {
 
     if ! "$@" > /dev/null 2>&1
     then
-        printf "%s %s assert %s\n" "$(red "ASSERTION FAILED:")" "$(yellow "${_location}")" "$*"
+        printf "%s %s assert %s\n" "$(red "ASSERTION FAILED:")" "$(yellow "${_location}")" "$*" >&2
         exit 1
     fi
 }
@@ -519,6 +519,14 @@ save_backup() {
     assert test -d "${_backup_dir}"
 }
 
+generate_password() {
+    assert test -e /dev/urandom
+    assert program_is_available tr
+    assert program_is_available head
+
+    head -c 1024 /dev/urandom | tr -dc 'a-z0-9' | head -c 8
+}
+
 #
 # Burly stuff above this point.  Artemis stuff below this point.
 #
@@ -746,8 +754,10 @@ main() {
 
         log "Creating the broker instance"
 
+        password="$(generate_password)"
+
         run "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
-            --user example --password example \
+            --user example --password "${password}" \
             --host localhost --allow-anonymous \
             --no-autotune \
             --no-hornetq-acceptor \
