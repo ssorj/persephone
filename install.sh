@@ -20,6 +20,7 @@
 
 # func <program>
 program_is_available() {
+    local _program
     _program="${1}"
 
     assert test -n "${_program}"
@@ -524,7 +525,7 @@ generate_password() {
     assert program_is_available tr
     assert program_is_available head
 
-    head -c 1024 /dev/urandom | tr -dc 'a-z0-9' | head -c 8
+    head -c 1024 /dev/urandom | LC_CTYPE=C tr -dc 'a-z0-9' | head -c 8
 }
 
 #
