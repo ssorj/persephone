@@ -525,7 +525,7 @@ generate_password() {
     assert program_is_available tr
     assert program_is_available head
 
-    head -c 1024 /dev/urandom | LC_CTYPE=C tr -dc 'a-z0-9' | head -c 8
+    head -c 1024 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 8
 }
 
 #
