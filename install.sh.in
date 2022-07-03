@@ -1,0 +1,350 @@
+#!/bin/sh
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+@burly@
+
+usage() {
+    local error
+    error="${1:-}"
+
+    if [ -n "${error}" ]
+    then
+        printf "%b %s\n\n" "$(red "ERROR:")" "${*}"
+    fi
+
+    cat <<EOF
+Usage: ${0} [-hvy] [-s <scheme>]
+
+A script that installs ActiveMQ Artemis
+
+Options:
+  -h            Print this help text and exit
+  -s <scheme>   Select an installation scheme (default "home")
+  -v            Print detailed logging to the console
+  -y            Operate in non-interactive mode
+
+Installation schemes:
+  home          Install to ~/.local and ~/.config
+  opt           Install to /opt, /var/opt, and /etc/opt
+EOF
+
+    if [ -n "${error}" ]
+    then
+        exit 1
+    fi
+
+    exit 0
+}
+
+# func <script-file> <artemis-instance-dir>
+create_artemis_instance_script() {
+    local script_file="$1"
+    local script_name="$(basename "${script_file}")"
+    local artemis_instance_dir="$2"
+
+    assert test -d "${artemis_instance_dir}"
+
+    cat > "${script_file}" <<EOF
+#!/bin/sh
+
+export ARTEMIS_INSTANCE=${artemis_instance_dir}
+
+exec "\${ARTEMIS_INSTANCE}/bin/${script_name}" "\$@"
+EOF
+
+    chmod +x "${script_file}"
+
+    assert test -x "${script_file}"
+}
+
+main() {
+    enable_strict_mode
+
+    if [ -n "${DEBUG:-}" ]
+    then
+        enable_debug_mode
+    fi
+
+    local scheme="home"
+    local verbose=
+    local interactive=1
+
+    while getopts :hs:vy option
+    do
+        case "${option}" in
+            h)
+                usage
+                ;;
+            s)
+                scheme="${OPTARG}"
+                ;;
+            v)
+                verbose=1
+                ;;
+            y)
+                interactive=
+                ;;
+            *)
+                usage "Unknown option: ${OPTARG}"
+                ;;
+        esac
+    done
+
+    # This is required to preserve the Windows drive letter in the
+    # path to HOME
+    case "$(uname)" in
+        CYGWIN*)
+            HOME="$(cygpath --mixed --windows "${HOME}")"
+            ;;
+        *)
+            ;;
+    esac
+
+    case "${scheme}" in
+        home)
+            artemis_bin_dir="${HOME}/.local/bin"
+            artemis_config_dir="${HOME}/.config/artemis"
+            artemis_home_dir="${HOME}/.local/share/artemis"
+            artemis_instance_dir="${HOME}/.local/state/artemis"
+            ;;
+        opt)
+            artemis_bin_dir="/opt/artemis/bin"
+            artemis_config_dir="/etc/opt/artemis"
+            artemis_home_dir="/opt/artemis"
+            artemis_instance_dir="/var/opt/artemis"
+            ;;
+        *)
+            usage "Unknown installation scheme: ${scheme}"
+            ;;
+    esac
+
+    work_dir="${HOME}/artemis-install-script"
+    log_file="${work_dir}/install.log"
+
+    mkdir -p "${work_dir}"
+    cd "${work_dir}"
+
+    init_logging "${log_file}" "${verbose}"
+
+    {
+        backup_dir="${work_dir}/backup"
+
+        if [ -e "${backup_dir}" ]
+        then
+            mv "${backup_dir}" "${backup_dir}.$(date +%Y-%m-%d).$(random_number)"
+        fi
+
+        if [ -n "${interactive}" ]
+        then
+            print_section "Preparing to install"
+
+            print "This script will install ActiveMQ Artemis to the following locations:"
+            print
+            print "    CLI tools:         ${artemis_bin_dir}"
+            print "    Config files:      ${artemis_config_dir}"
+            print "    Artemis home:      ${artemis_home_dir}"
+            print "    Artemis instance:  ${artemis_instance_dir}"
+            print
+            print "It will save a backup of any existing installation to:"
+            print
+            print "    ${backup_dir}"
+            print
+            print "Run \"install.sh -h\" to see the installation options."
+            print
+
+            while true
+            do
+                print -n "Do you want to proceed? (yes or no): "
+                read -r response
+
+                case "${response}" in
+                    yes)
+                        break
+                        ;;
+                    no)
+                        exit
+                        ;;
+                    *)
+                        ;;
+                esac
+            done
+
+            print
+        fi
+
+        print_section "Checking prerequisites"
+
+        check_writable_directories "${artemis_bin_dir}" \
+                                   "$(dirname "${artemis_config_dir}")" \
+                                   "$(dirname "${artemis_home_dir}")" \
+                                   "$(dirname "${artemis_instance_dir}")"
+
+        check_required_programs awk curl grep gzip java nc ps sed tar
+
+        check_required_program_sha512sum
+
+        check_required_ports 1883 5672 8161 61613 61616
+
+        check_required_network_resources "https://dlcdn.apache.org/" "https://downloads.apache.org/"
+
+        check_java
+
+        print_result "OK"
+
+        print_section "Downloading and verifying the latest release"
+
+        fetch_latest_apache_release "/activemq/activemq-artemis/" "${work_dir}"
+
+        print_result "OK"
+
+        if [ -e "${artemis_config_dir}" ] || [ -e "${artemis_home_dir}" ] || [ -e "${artemis_instance_dir}" ]
+        then
+            print_section "Saving the existing installation to a backup"
+
+            save_backup "${backup_dir}" \
+                        "${artemis_config_dir}" "${artemis_home_dir}" "${artemis_instance_dir}" \
+                        "${artemis_bin_dir}/artemis" "${artemis_bin_dir}/artemis-service"
+
+            print_result "OK"
+        fi
+
+        print_section "Installing the broker"
+
+        log "Extracting the release dir from the release archive"
+
+        release_dir="${work_dir}/apache-artemis-${release_version}"
+
+        extract_archive "${release_file}" "${work_dir}"
+
+        assert test -d "${release_dir}"
+
+        log "Moving the release dir to its install location"
+
+        assert test ! -e "${artemis_home_dir}"
+
+        mkdir -p "$(dirname "${artemis_home_dir}")"
+        mv "${release_dir}" "${artemis_home_dir}"
+
+        log "Creating the broker instance"
+
+        password="$(generate_password)"
+
+        run "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
+            --user example --password "${password}" \
+            --host localhost --allow-anonymous \
+            --no-autotune \
+            --no-hornetq-acceptor \
+            --etc "${artemis_config_dir}" \
+            --verbose
+
+        log "Creating wrapper scripts"
+
+        mkdir -p "${artemis_bin_dir}"
+
+        rm -f "${artemis_bin_dir}/artemis"
+        rm -f "${artemis_bin_dir}/artemis-service"
+
+        create_artemis_instance_script "${artemis_bin_dir}/artemis" "${artemis_instance_dir}"
+        create_artemis_instance_script "${artemis_bin_dir}/artemis-service" "${artemis_instance_dir}"
+
+        print_result "OK"
+
+        print_section "Testing the installation"
+
+        log "Testing the artemis command"
+
+        run "${artemis_bin_dir}/artemis" version
+
+        log "Testing the broker"
+
+        run "${artemis_bin_dir}/artemis-service" start
+
+        await_port_is_active 61616
+
+        run "${artemis_bin_dir}/artemis" producer --silent --verbose --message-count 1
+        run "${artemis_bin_dir}/artemis" consumer --silent --verbose --message-count 1
+
+        # The 'artemis-service stop' command times out too quickly for
+        # CI, so I tolerate a failure here
+        run "${artemis_bin_dir}/artemis-service" stop || :
+
+        await_port_is_free 61616
+
+        print_result "OK"
+
+        print_section "Summary"
+
+        print_result "SUCCESS"
+
+        print "ActiveMQ Artemis is now installed."
+        print
+        print "    Version:           ${release_version}"
+        print "    Config files:      ${artemis_config_dir}"
+        print "    Log files:         ${artemis_instance_dir}/log"
+        print "    Console user:      example"
+        print "    Console password:  ${password}"
+
+        if [ -e "${backup_dir}" ]
+        then
+            print "    Backup:            ${backup_dir}"
+        fi
+
+        print
+
+        print "The artemis command is available at:"
+        print
+        print "    ${artemis_bin_dir}/artemis"
+        print
+
+        if [ "$(command -v artemis)" != "${artemis_bin_dir}/artemis" ]
+        then
+            print "$(yellow "NOTE:") The artemis command is not on your path.  To add it, use:"
+            print
+
+            if [ "${scheme}" = "home" ]
+            then
+                print "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+            else
+                print "    export PATH=\"${artemis_bin_dir}:\$PATH\""
+            fi
+
+            print
+        fi
+
+        print "If you are learning about Artemis, see the getting started guide:"
+        print
+        print "    https://github.com/ssorj/persephone/blob/main/getting-started.md"
+        print
+        print "If you are preparing Artemis for production use, see the deployment guide:"
+        print
+        print "    https://github.com/ssorj/persephone/blob/main/deployment.md"
+        print
+        print "To uninstall Artemis, use:"
+        print
+        print "    curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh"
+        print
+        print "To start the broker, use:"
+        print
+        print "    $(bold "artemis run")"
+        print
+    } >&4 2>&4
+}
+
+main "$@"

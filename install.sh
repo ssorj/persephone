@@ -245,19 +245,19 @@ enable_debug_mode() {
 
 handle_exit() {
     # This must go first
-    _exit_code=$?
+    local exit_code=$?
 
-    _log_file="$1"
-    _verbose="$2"
+    local log_file="$1"
+    local verbose="$2"
 
     # Restore stdout and stderr
     exec 1>&7
     exec 2>&8
 
     # shellcheck disable=SC2181 # This is intentionally indirect
-    if [ "${_exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
+    if [ "${exit_code}" != 0 ] && [ -z "${suppress_trouble_report:-}" ]
     then
-        if [ -n "${_verbose}" ]
+        if [ -n "${verbose}" ]
         then
             printf "%s Something went wrong.
 
@@ -280,15 +280,15 @@ handle_exit() {
 
 # func <log-file> <verbose>
 init_logging() {
-    _log_file="$1"
-    _verbose="$2"
+    local log_file="$1"
+    local verbose="$2"
 
     # shellcheck disable=SC2064 # We want to expand these now, not later
-    trap "handle_exit '${_log_file}' '${_verbose}'" EXIT
+    trap "handle_exit '${log_file}' '${verbose}'" EXIT
 
-    if [ -e "${_log_file}" ]
+    if [ -e "${log_file}" ]
     then
-        mv "${_log_file}" "${_log_file}.$(date +%Y-%m-%d).$(random_number)"
+        mv "${log_file}" "${log_file}.$(date +%Y-%m-%d).$(random_number)"
     fi
 
     # Use file descriptor 3 for the default display output
@@ -306,42 +306,46 @@ init_logging() {
     # command output to the log file.
     #
     # XXX Use tee to capture to the log file at the same time?
-    if [ -n "${_verbose}" ]
+    if [ -n "${verbose}" ]
     then
         exec 3> /dev/null
     else
-        exec 4> "${_log_file}"
+        exec 4> "${log_file}"
     fi
 }
 
 check_writable_directories() {
     log "Checking for permission to write to the install directories"
 
-    for _dir in "$@"
+    local dir=
+    local base_dir=
+    local unwritable_dirs=
+
+    for dir in "$@"
     do
-        log "Checking directory '${_dir}'"
+        log "Checking directory '${dir}'"
 
-        _base_dir="${_dir}"
+        base_dir="${dir}"
 
-        while [ ! -e "${_base_dir}" ]
+        while [ ! -e "${base_dir}" ]
         do
-            _base_dir="$(dirname "${_base_dir}")"
+            base_dir="$(dirname "${base_dir}")"
         done
 
-        if [ -w "${_base_dir}" ]
+        if [ -w "${base_dir}" ]
         then
             printf "Directory '%s' is writable
-" "${_base_dir}"
+" "${base_dir}"
         else
             printf "Directory '%s' is not writeable
-" "${_base_dir}"
-            _unwritable_dirs="${_unwritable_dirs:-}${_base_dir}, "
+" "${base_dir}"
+            unwritable_dirs="${unwritable_dirs}${base_dir}, "
         fi
     done
 
-    if [ -n "${_unwritable_dirs:-}" ]
+    if [ -n "${unwritable_dirs}" ]
     then
-        fail "Some directories are not writable: ${_unwritable_dirs%??}"
+        fail "Some directories are not writable: ${unwritable_dirs%??}"
         # XXX Guidance
     fi
 }
@@ -349,19 +353,22 @@ check_writable_directories() {
 check_required_programs() {
     log "Checking for required programs"
 
-    for _program in "$@"
-    do
-        log "Checking program '${_program}'"
+    local program=
+    local unavailable_programs=
 
-        if ! command -v "${_program}"
+    for program in "$@"
+    do
+        log "Checking program '${program}'"
+
+        if ! command -v "${program}"
         then
-            _unavailable_programs="${unavailable_programs:-}${_program}, "
+            unavailable_programs="${unavailable_programs}${program}, "
         fi
     done
 
-    if [ -n "${_unavailable_programs:-}" ]
+    if [ -n "${unavailable_programs}" ]
     then
-        fail "Some required programs are not available: ${_unavailable_programs%??}"
+        fail "Some required programs are not available: ${unavailable_programs%??}"
         # XXX Guidance - Use your OS's package manager to lookup and install things
     fi
 }
@@ -378,19 +385,22 @@ check_required_program_sha512sum() {
 check_required_ports() {
     log "Checking for required ports"
 
-    for _port in "$@"
-    do
-        log "Checking port ${_port}"
+    local port=
+    local unavailable_ports=
 
-        if port_is_active "${_port}"
+    for port in "$@"
+    do
+        log "Checking port ${port}"
+
+        if port_is_active "${port}"
         then
-            _unavailable_ports="${_unavailable_ports:-}${_port}, "
+            unavailable_ports="${unavailable_ports}${port}, "
         fi
     done
 
-    if [ -n "${_unavailable_ports:-}" ]
+    if [ -n "${unavailable_ports}" ]
     then
-        fail "Some required ports are in use by something else: ${_unavailable_ports%??}"
+        fail "Some required ports are in use by something else: ${unavailable_ports%??}"
         # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
     fi
 }
@@ -398,19 +408,24 @@ check_required_ports() {
 check_required_network_resources() {
     log "Checking for required network resources"
 
-    for _url in "$@"
-    do
-        log "Checking URL '${_url}'"
+    local url=
+    local unavailable_urls=
 
-        if ! curl -sf --show-error --head "${_url}"
+    assert program_is_available curl
+
+    for url in "$@"
+    do
+        log "Checking URL '${url}'"
+
+        if ! curl -sf --show-error --head "${url}"
         then
-            _unavailable_urls="${_unavailable_urls:-}${_url}, "
+            unavailable_urls="${unavailable_urls}${url}, "
         fi
     done
 
-    if [ -n "${_unavailable_urls:-}" ]
+    if [ -n "${unavailable_urls}" ]
     then
-        fail "Some required network resources are not available: ${_unavailable_urls%??}"
+        fail "Some required network resources are not available: ${unavailable_urls%??}"
         # XXX Guidance
     fi
 }
