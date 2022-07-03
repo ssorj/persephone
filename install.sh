@@ -853,7 +853,7 @@ main() {
         print
         print "To start the broker, use:"
         print
-        print "    artemis run"
+        print "    $(bold "artemis run")"
         print
     } >&4 2>&4
 }
