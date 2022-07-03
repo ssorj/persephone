@@ -2,9 +2,19 @@
 CYGWIN = call("uname").startswith("CYGWIN")
 
 @command
+def build(app):
+    burly = read("burly.sh")
+    install_sh_in = read("install.sh.in")
+    install_sh = replace(install_sh_in, "@burly@", burly)
+
+    write("install.sh", install_sh)
+
+@command
 def test(app, shell="sh", verbose=False, debug=False):
     if not CYGWIN:
         check_program(shell)
+
+    build(app)
 
     if debug:
         ENV["DEBUG"] = "1"
@@ -45,7 +55,7 @@ def big_test(app, verbose=False, debug=False):
 def lint(app):
     check_program("shellcheck")
 
-    run("shellcheck --enable all install.sh")
+    run("shellcheck --enable all --exclude SC3043 install.sh")
 
 @command
 def clean(app):

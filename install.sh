@@ -20,44 +20,45 @@
 
 # func <program>
 program_is_available() {
-    local _program
-    _program="${1}"
+    local program="${1}"
 
-    assert test -n "${_program}"
+    assert test -n "${program}"
 
-    command -v "${_program}"
+    command -v "${program}"
 }
 
 # func <port>
 port_is_active() {
-    _port="$1"
+    local port="$1"
 
     assert program_is_available nc
 
-    if nc -z localhost "${_port}"
+    if nc -z localhost "${port}"
     then
-        printf "Port %s is active\n" "${_port}"
+        printf "Port %s is active
+" "${port}"
         return 0
     else
-        printf "Port %s is free\n" "${_port}"
+        printf "Port %s is free
+" "${port}"
         return 1
     fi
 }
 
 # func <port>
 await_port_is_active() {
-    _port="$1"
-    _i=0
+    local port="$1"
+    local i=0
 
-    log "Waiting for port ${_port} to open"
+    log "Waiting for port ${port} to open"
 
     while ! port_is_active 61616
     do
-        _i=$((_i + 1))
+        i=$((i + 1))
 
-        if [ "${_i}" = 30 ]
+        if [ "${i}" = 30 ]
         then
-            log "Timed out waiting for port ${_port} to open"
+            log "Timed out waiting for port ${port} to open"
             return 1
         fi
 
@@ -67,18 +68,18 @@ await_port_is_active() {
 
 # func <port>
 await_port_is_free() {
-    _port="$1"
-    _i=0
+    local port="$1"
+    local i=0
 
-    log "Waiting for port ${_port} to close"
+    log "Waiting for port ${port} to close"
 
     while port_is_active 61616
     do
-        _i=$((_i + 1))
+        i=$((i + 1))
 
-        if [ "${_i}" = 30 ]
+        if [ "${i}" = 30 ]
         then
-            log "Timed out waiting for port ${_port} to close"
+            log "Timed out waiting for port ${port} to close"
             return 1
         fi
 
@@ -88,12 +89,14 @@ await_port_is_free() {
 
 # func <string> <glob>
 string_is_match() {
-    _string="$1"
-    _glob="$2"
+    local string="$1"
+    glob="$2"
+
+    assert test -n "${glob}"
 
     # shellcheck disable=SC2254 # We want the glob
-    case "${_string}" in
-        ${_glob})
+    case "${string}" in
+        ${glob})
             return 0
             ;;
         *)
@@ -108,19 +111,19 @@ random_number() {
 
 # func <archive-file> <output-dir>
 extract_archive() {
-    _archive_file="$1"
-    _output_dir="$2"
+    local archive_file="$1"
+    local output_dir="$2"
 
-    assert test -f "${_archive_file}"
-    assert test -d "${_output_dir}"
+    assert test -f "${archive_file}"
+    assert test -d "${output_dir}"
     assert program_is_available gzip
     assert program_is_available tar
 
-    gzip -dc "${_archive_file}" | (cd "${_output_dir}" && tar xf -)
+    gzip -dc "${archive_file}" | (cd "${output_dir}" && tar xf -)
 }
 
 assert() {
-    _location="$0"
+    local location="$0"
 
     # shellcheck disable=SC2128 # We want only the first element of the array
     if [ -n "${BASH_LINENO:-}" ]
@@ -130,41 +133,46 @@ assert() {
 
     if ! "$@" > /dev/null 2>&1
     then
-        printf "%s %s assert %s\n" "$(red "ASSERTION FAILED:")" "$(yellow "${_location}")" "$*" >&2
+        printf "%s %s assert %s
+" "$(red "ASSERTION FAILED:")" "$(yellow "${location}")" "$*" >&2
         exit 1
     fi
 }
 
 log() {
-    printf -- "-- %s\n" "$1"
+    printf -- "-- %s
+" "$1"
 }
 
 run() {
-    printf -- "-- Running '%s'\n" "$*" >&2
+    printf -- "-- Running '%s'
+" "$*" >&2
     "$@"
 }
 
 bold() {
-    printf "\033[1m%s\033[0m" "$1"
+    printf "[1m%s[0m" "$1"
 }
 
 red() {
-    printf "\033[1;31m%s\033[0m" "$1"
+    printf "[1;31m%s[0m" "$1"
 }
 
 green() {
-    printf "\033[0;32m%s\033[0m" "$1"
+    printf "[0;32m%s[0m" "$1"
 }
 
 yellow() {
-    printf "\033[0;33m%s\033[0m" "$1"
+    printf "[0;33m%s[0m" "$1"
 }
 
 print() {
-    if [ "${#}" = 0 ]
+    if [ "$#" = 0 ]
     then
-        printf "\n" >&3
-        printf -- "--\n"
+        printf "
+" >&3
+        printf -- "--
+"
         return
     fi
 
@@ -175,23 +183,32 @@ print() {
         printf "   %s" "$1" >&3
         printf -- "-- %s" "$1"
     else
-        printf "   %s\n" "$1" >&3
-        printf -- "-- %s\n" "$1"
+        printf "   %s
+" "$1" >&3
+        printf -- "-- %s
+" "$1"
     fi
 }
 
 print_section() {
-    printf "== %s ==\n\n" "$(bold "$1")" >&3
-    printf "== %s\n" "$1"
+    printf "== %s ==
+
+" "$(bold "$1")" >&3
+    printf "== %s
+" "$1"
 }
 
 print_result() {
-    printf "   %s\n\n" "$(green "$1")" >&3
+    printf "   %s
+
+" "$(green "$1")" >&3
     log "Result: $(green "$1")"
 }
 
 fail() {
-    printf "   %s %s\n\n" "$(red "ERROR:")" "$1" >&3
+    printf "   %s %s
+
+" "$(red "ERROR:")" "$1" >&3
     log "$(red "ERROR:") $1"
 
     suppress_trouble_report=1
@@ -222,7 +239,7 @@ enable_debug_mode() {
     if [ -n "${BASH:-}" ]
     then
         # Bash offers more details
-        export PS4='\033[0;33m${BASH_SOURCE}:${LINENO}:\033[0m ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+        export PS4='[0;33m${BASH_SOURCE}:${LINENO}:[0m ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
     fi
 }
 
@@ -242,14 +259,21 @@ handle_exit() {
     then
         if [ -n "${_verbose}" ]
         then
-            printf "%s Something went wrong.\n\n" "$(red "TROUBLE!")"
+            printf "%s Something went wrong.
+
+" "$(red "TROUBLE!")"
         else
-            printf "   %s Something went wrong.\n\n" "$(red "TROUBLE!")"
-            printf "== Log ==\n\n"
+            printf "   %s Something went wrong.
+
+" "$(red "TROUBLE!")"
+            printf "== Log ==
+
+"
 
             sed -e "s/^/  /" < "${log_file}" || :
 
-            printf "\n"
+            printf "
+"
         fi
     fi
 }
@@ -306,9 +330,11 @@ check_writable_directories() {
 
         if [ -w "${_base_dir}" ]
         then
-            printf "Directory '%s' is writable\n" "${_base_dir}"
+            printf "Directory '%s' is writable
+" "${_base_dir}"
         else
-            printf "Directory '%s' is not writeable\n" "${_base_dir}"
+            printf "Directory '%s' is not writeable
+" "${_base_dir}"
             _unwritable_dirs="${_unwritable_dirs:-}${_base_dir}, "
         fi
     done
@@ -422,8 +448,10 @@ fetch_latest_apache_release() {
 
     _release_version="$(cat "${_release_version_file}")"
 
-    printf "Release version: %s\n" "${_release_version}"
-    printf "Release version file: %s\n" "${_release_version_file}"
+    printf "Release version: %s
+" "${_release_version}"
+    printf "Release version file: %s
+" "${_release_version_file}"
 
     _release_file_name="apache-artemis-${_release_version}-bin.tar.gz"
     _release_file="${_output_dir}/${_release_file_name}"
@@ -439,14 +467,16 @@ fetch_latest_apache_release() {
         log "Using the cached release archive"
     fi
 
-    printf "Archive file: %s\n" "${_release_file}"
+    printf "Archive file: %s
+" "${_release_file}"
 
     log "Downloading the checksum file"
 
     run curl -sf --show-error -o "${_release_file_checksum}" \
         "https://downloads.apache.org/activemq/activemq-artemis/${_release_version}/${_release_file_name}.sha512"
 
-    printf "Checksum file: %s\n" "${_release_file_checksum}"
+    printf "Checksum file: %s
+" "${_release_file_checksum}"
 
     log "Verifying the release archive"
 
@@ -528,14 +558,12 @@ generate_password() {
     head -c 1024 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 16
 }
 
-#
-# Burly stuff above this point.  Artemis stuff below this point.
-#
 
 usage() {
-    _error="${1:-}"
+    local error
+    error="${1:-}"
 
-    if [ -n "${_error}" ]
+    if [ -n "${error}" ]
     then
         printf "%b %s\n\n" "$(red "ERROR:")" "${*}"
     fi
@@ -556,7 +584,7 @@ Installation schemes:
   opt           Install to /opt, /var/opt, and /etc/opt
 EOF
 
-    if [ -n "${_error}" ]
+    if [ -n "${error}" ]
     then
         exit 1
     fi
@@ -566,23 +594,23 @@ EOF
 
 # func <script-file> <artemis-instance-dir>
 create_artemis_instance_script() {
-    _script_file="$1"
-    _script_name="$(basename "${_script_file}")"
-    _artemis_instance_dir="$2"
+    local script_file="$1"
+    local script_name="$(basename "${script_file}")"
+    local artemis_instance_dir="$2"
 
-    assert test -d "${_artemis_instance_dir}"
+    assert test -d "${artemis_instance_dir}"
 
-    cat > "${_script_file}" <<EOF
+    cat > "${script_file}" <<EOF
 #!/bin/sh
 
-export ARTEMIS_INSTANCE=${_artemis_instance_dir}
+export ARTEMIS_INSTANCE=${artemis_instance_dir}
 
-exec "\${ARTEMIS_INSTANCE}/bin/${_script_name}" "\$@"
+exec "\${ARTEMIS_INSTANCE}/bin/${script_name}" "\$@"
 EOF
 
-    chmod +x "$1"
+    chmod +x "${script_file}"
 
-    assert test -x "${_script_file}"
+    assert test -x "${script_file}"
 }
 
 main() {
@@ -593,9 +621,9 @@ main() {
         enable_debug_mode
     fi
 
-    scheme="home"
-    verbose=
-    interactive=1
+    local scheme="home"
+    local verbose=
+    local interactive=1
 
     while getopts :hs:vy option
     do
