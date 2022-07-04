@@ -7,10 +7,10 @@ case "${KSH_VERSION:-}" in
         ;;
 esac
 
-# Make zsh globbing behave the same as the other shells
+# Make zsh emulate the Bourne shell
 if [ -n "${ZSH_VERSION:-}" ]
 then
-    setopt glob_subst
+    emulate sh
 fi
 
 # func <program>
