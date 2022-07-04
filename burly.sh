@@ -1,3 +1,12 @@
+# Make the local keyword work with ksh93 and POSIX-style functions
+case "${KSH_VERSION:-}" in
+    *" 93"*)
+        alias local="typeset -x"
+        ;;
+    *)
+        ;;
+esac
+
 # func <program>
 program_is_available() {
     local program="${1}"
@@ -406,7 +415,7 @@ fetch_latest_apache_release() {
     assert program_is_available awk
     assert program_is_available sort
     assert program_is_available tail
-    assert program_is_available sha512sum || assert program_is_available shasum
+    program_is_available sha512sum || program_is_available shasum || assert false
 
     local release_version_file="${output_dir}/release-version.txt"
 
@@ -519,13 +528,3 @@ generate_password() {
 
     head -c 1024 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 16
 }
-
-# teach ksh 93 about local
-case "$KSH_VERSION" in
-    *" 93"*)
-        echo 111
-        alias local="typeset -x"
-        ;;
-    *)
-        :
-esac

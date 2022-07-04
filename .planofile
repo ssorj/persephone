@@ -34,7 +34,7 @@ def big_test(app, verbose=False, debug=False):
     test(app, verbose=verbose, debug=True)
     test(app, verbose=verbose, debug=False)
 
-    for shell in "ash", "bash", "dash":
+    for shell in "ash", "bash", "dash", "ksh":
         if CYGWIN or not which(shell):
             continue
 
