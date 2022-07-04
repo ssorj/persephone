@@ -56,8 +56,10 @@ EOF
 # func <script-file> <artemis-instance-dir>
 create_artemis_instance_script() {
     local script_file="$1"
-    local script_name="$(basename "${script_file}")"
     local artemis_instance_dir="$2"
+    local script_name=
+
+    script_name="$(basename "${script_file}")"
 
     assert test -d "${artemis_instance_dir}"
 

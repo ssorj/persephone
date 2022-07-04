@@ -101,12 +101,12 @@ extract_archive() {
 }
 
 assert() {
-    local location="$0"
+    local location="$0:"
 
     # shellcheck disable=SC2128 # We want only the first element of the array
     if [ -n "${BASH_LINENO:-}" ]
     then
-        _location="$0:${BASH_LINENO}:"
+        location="$0:${BASH_LINENO}:"
     fi
 
     if ! "$@" > /dev/null 2>&1
@@ -397,65 +397,66 @@ check_java() {
 
 # func <url-path> <output-dir> -> release_version=<version>, release_file=<file>
 fetch_latest_apache_release() {
-    _url_path="$1"
-    _output_dir="$2"
+    local url_path="$1"
+    local output_dir="$2"
 
-    assert string_is_match "${_url_path}" "/*/"
-    assert test -d "${_output_dir}"
+    assert string_is_match "${url_path}" "/*/"
+    assert test -d "${output_dir}"
     assert program_is_available curl
     assert program_is_available awk
     assert program_is_available sort
     assert program_is_available tail
+    assert program_is_available sha512sum || assert program_is_available shasum
 
-    _release_version_file="${_output_dir}/release-version.txt"
+    local release_version_file="${output_dir}/release-version.txt"
 
     log "Looking up the latest release version"
 
-    run curl -sf --show-error "https://dlcdn.apache.org${_url_path}" \
+    run curl -sf --show-error "https://dlcdn.apache.org${url_path}" \
         | awk 'match($0, /[0-9]+\.[0-9]+\.[0-9]+/) { print substr($0, RSTART, RLENGTH) }' \
         | sort -t . -k1n -k2n -k3n \
-        | tail -n 1 >| "${_release_version_file}"
+        | tail -n 1 >| "${release_version_file}"
 
-    _release_version="$(cat "${_release_version_file}")"
+    release_version="$(cat "${release_version_file}")"
 
-    printf "Release version: %s\n" "${_release_version}"
-    printf "Release version file: %s\n" "${_release_version_file}"
+    printf "Release version: %s\n" "${release_version}"
+    printf "Release version file: %s\n" "${release_version_file}"
 
-    _release_file_name="apache-artemis-${_release_version}-bin.tar.gz"
-    _release_file="${_output_dir}/${_release_file_name}"
-    _release_file_checksum="${_release_file}.sha512"
+    local release_file_name="apache-artemis-${release_version}-bin.tar.gz"
+    release_file="${output_dir}/${release_file_name}"
+    local release_file_checksum="${release_file}.sha512"
 
-    if [ ! -e "${_release_file}" ]
+    if [ ! -e "${release_file}" ]
     then
         log "Downloading the latest release"
 
-        run curl -sf --show-error -o "${_release_file}" \
-            "https://dlcdn.apache.org/activemq/activemq-artemis/${_release_version}/${_release_file_name}"
+        run curl -sf --show-error -o "${release_file}" \
+            "https://dlcdn.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}"
     else
         log "Using the cached release archive"
     fi
 
-    printf "Archive file: %s\n" "${_release_file}"
+    printf "Archive file: %s\n" "${release_file}"
 
     log "Downloading the checksum file"
 
-    run curl -sf --show-error -o "${_release_file_checksum}" \
-        "https://downloads.apache.org/activemq/activemq-artemis/${_release_version}/${_release_file_name}.sha512"
+    run curl -sf --show-error -o "${release_file_checksum}" \
+        "https://downloads.apache.org/activemq/activemq-artemis/${release_version}/${release_file_name}.sha512"
 
-    printf "Checksum file: %s\n" "${_release_file_checksum}"
+    printf "Checksum file: %s\n" "${release_file_checksum}"
 
     log "Verifying the release archive"
 
     if command -v sha512sum
     then
-        if ! run sha512sum -c "${_release_file_checksum}"
+        if ! run sha512sum -c "${release_file_checksum}"
         then
             fail "The checksum does not match the downloaded release archive"
             # XXX Guidance - Try blowing away the cached download
         fi
     elif command -v shasum
     then
-        if ! run shasum -a 512 -c "${_release_file_checksum}"
+        if ! run shasum -a 512 -c "${release_file_checksum}"
         then
             fail "The checksum does not match the downloaded release archive"
             # XXX Guidance - Try blowing away the cached download
@@ -463,63 +464,68 @@ fetch_latest_apache_release() {
     else
         assert false
     fi
-
-    assert test -z "${release_version:-}"
-    assert test -z "${release_file:-}"
-
-    release_version="${_release_version}"
-    release_file="${_release_file}"
 }
 
 # func <backup-dir> <config-dir> <share-dir> <state-dir> [<bin-file>...]
 save_backup() {
-    _backup_dir="$1"
-    _config_dir="$2"
-    _share_dir="$3"
-    _state_dir="$4"
+    local backup_dir="$1"
+    local config_dir="$2"
+    local share_dir="$3"
+    local state_dir="$4"
+    local bin_file=
 
     shift 4
 
     log "Saving the previous config dir"
 
-    if [ -e "${_config_dir}" ]
+    if [ -e "${config_dir}" ]
     then
-        mkdir -p "${_backup_dir}/config"
-        mv "${_config_dir}" "${_backup_dir}/config"
+        mkdir -p "${backup_dir}/config"
+        mv "${config_dir}" "${backup_dir}/config"
     fi
 
     log "Saving the previous share dir"
 
-    if [ -e "${_share_dir}" ]
+    if [ -e "${share_dir}" ]
     then
-        mkdir -p "${_backup_dir}/share"
-        mv "${_share_dir}" "${_backup_dir}/share"
+        mkdir -p "${backup_dir}/share"
+        mv "${share_dir}" "${backup_dir}/share"
     fi
 
     log "Saving the previous state dir"
 
-    if [ -e "${_state_dir}" ]
+    if [ -e "${state_dir}" ]
     then
-        mkdir -p "${_backup_dir}/state"
-        mv "${_state_dir}" "${_backup_dir}/state"
+        mkdir -p "${backup_dir}/state"
+        mv "${state_dir}" "${backup_dir}/state"
     fi
 
-    for _bin_file in "$@"
+    for bin_file in "$@"
     do
-        if [ -e "${_bin_file}" ]
+        if [ -e "${bin_file}" ]
         then
-            mkdir -p "${_backup_dir}/bin"
-            mv "${_bin_file}" "${_backup_dir}/bin"
+            mkdir -p "${backup_dir}/bin"
+            mv "${bin_file}" "${backup_dir}/bin"
         fi
     done
 
-    assert test -d "${_backup_dir}"
+    assert test -d "${backup_dir}"
 }
 
 generate_password() {
     assert test -e /dev/urandom
-    assert program_is_available tr
     assert program_is_available head
+    assert program_is_available tr
 
     head -c 1024 /dev/urandom | LC_ALL=C tr -dc 'a-z0-9' | head -c 16
 }
+
+# teach ksh 93 about local
+case "$KSH_VERSION" in
+    *" 93"*)
+        echo 111
+        alias local="typeset -x"
+        ;;
+    *)
+        :
+esac

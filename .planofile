@@ -20,8 +20,8 @@ def test(app, shell="sh", verbose=False, debug=False):
         ENV["DEBUG"] = "1"
 
     try:
-        run(f"{shell} install.sh -y {'-v' if verbose else ''}")
-        run(f"{shell} uninstall.sh -y {'-v' if verbose else ''}")
+        run(f"{shell} install.sh -y {'-v' if verbose else ''}".strip())
+        run(f"{shell} uninstall.sh -y {'-v' if verbose else ''}".strip())
     finally:
         if debug:
             del ENV["DEBUG"]
@@ -34,7 +34,7 @@ def big_test(app, verbose=False, debug=False):
     test(app, verbose=verbose, debug=True)
     test(app, verbose=verbose, debug=False)
 
-    for shell in "ash", "bash", "dash", "ksh":
+    for shell in "ash", "bash", "dash":
         if CYGWIN or not which(shell):
             continue
 
@@ -54,6 +54,8 @@ def big_test(app, verbose=False, debug=False):
 @command
 def lint(app):
     check_program("shellcheck")
+
+    build(app)
 
     run("shellcheck --enable all --exclude SC3043 install.sh")
 
