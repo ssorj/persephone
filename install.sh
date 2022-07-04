@@ -27,6 +27,12 @@ case "${KSH_VERSION:-}" in
         ;;
 esac
 
+# Make zsh globbing behave the same as the other shells
+if [ -n "${ZSH_VERSION:-}" ]
+then
+    setopt glob_subst
+fi
+
 # func <program>
 program_is_available() {
     local program="${1}"
