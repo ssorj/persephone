@@ -57,7 +57,7 @@ EOF
 create_artemis_instance_script() {
     local script_file="$1"
     local artemis_instance_dir="$2"
-    local script_name=
+    local script_name
 
     script_name="$(basename "${script_file}")"
 
@@ -109,16 +109,6 @@ main() {
         esac
     done
 
-    # This is required to preserve the Windows drive letter in the
-    # path to HOME
-    case "$(uname)" in
-        CYGWIN*)
-            HOME="$(cygpath --mixed --windows "${HOME}")"
-            ;;
-        *)
-            ;;
-    esac
-
     case "${scheme}" in
         home)
             artemis_bin_dir="${HOME}/.local/bin"
@@ -137,8 +127,9 @@ main() {
             ;;
     esac
 
-    work_dir="${HOME}/artemis-install-script"
-    log_file="${work_dir}/install.log"
+    local work_dir="${HOME}/artemis-install-script"
+    local log_file="${work_dir}/install.log"
+    local backup_dir="${work_dir}/backup"
 
     mkdir -p "${work_dir}"
     cd "${work_dir}"
@@ -146,8 +137,6 @@ main() {
     init_logging "${log_file}" "${verbose}"
 
     {
-        backup_dir="${work_dir}/backup"
-
         if [ -e "${backup_dir}" ]
         then
             mv "${backup_dir}" "${backup_dir}.$(date +%Y-%m-%d).$(random_number)"
@@ -231,7 +220,7 @@ main() {
 
         log "Extracting the release dir from the release archive"
 
-        release_dir="${work_dir}/apache-artemis-${release_version}"
+        local release_dir="${work_dir}/apache-artemis-${release_version}"
 
         extract_archive "${release_file}" "${work_dir}"
 
@@ -246,6 +235,7 @@ main() {
 
         log "Creating the broker instance"
 
+        local password
         password="$(generate_password)"
 
         run "${artemis_home_dir}/bin/artemis" create "${artemis_instance_dir}" \
@@ -284,7 +274,7 @@ main() {
         run "${artemis_bin_dir}/artemis" consumer --silent --verbose --message-count 1
 
         # The 'artemis-service stop' command times out too quickly for
-        # CI, so I tolerate a failure here
+        # CI, so I tolerate a failure here.
         run "${artemis_bin_dir}/artemis-service" stop || :
 
         await_port_is_free 61616
@@ -330,7 +320,7 @@ main() {
             print
         fi
 
-        print "If you are learning about Artemis, see the getting started guide:"
+        print "If you are trying Artemis for the first time, see the getting started guide:"
         print
         print "    https://github.com/ssorj/persephone/blob/main/getting-started.md"
         print

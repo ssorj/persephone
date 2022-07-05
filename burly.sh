@@ -13,6 +13,16 @@ then
     emulate sh
 fi
 
+# This is required to preserve the Windows drive letter in the
+# path to HOME.
+case "$(uname)" in
+    CYGWIN*)
+        HOME="$(cygpath --mixed --windows "${HOME}")"
+        ;;
+    *)
+        ;;
+esac
+
 # func <program>
 program_is_available() {
     local program="${1}"
