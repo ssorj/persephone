@@ -105,7 +105,7 @@ await_port_is_free() {
 # func <string> <glob>
 string_is_match() {
     local string="$1"
-    glob="$2"
+    local glob="$2"
 
     assert test -n "${glob}"
 
@@ -329,14 +329,16 @@ init_logging() {
     fi
 }
 
+# func [<dir>...]
 check_writable_directories() {
     log "Checking for permission to write to the install directories"
 
+    local dirs="$*"
     local dir=
     local base_dir=
     local unwritable_dirs=
 
-    for dir in "$@"
+    for dir in ${dirs}
     do
         log "Checking directory '${dir}'"
 
@@ -365,13 +367,15 @@ check_writable_directories() {
     fi
 }
 
+# func [<program>...]
 check_required_programs() {
     log "Checking for required programs"
 
+    local programs="$*"
     local program=
     local unavailable_programs=
 
-    for program in "$@"
+    for program in ${programs}
     do
         log "Checking program '${program}'"
 
@@ -397,13 +401,15 @@ check_required_program_sha512sum() {
     fi
 }
 
+# func [<port>...]
 check_required_ports() {
     log "Checking for required ports"
 
+    local ports="$*"
     local port=
     local unavailable_ports=
 
-    for port in "$@"
+    for port in ${ports}
     do
         log "Checking port ${port}"
 
@@ -420,15 +426,17 @@ check_required_ports() {
     fi
 }
 
+# func [<url>...]
 check_required_network_resources() {
     log "Checking for required network resources"
 
+    local urls="$*"
     local url=
     local unavailable_urls=
 
     assert program_is_available curl
 
-    for url in "$@"
+    for url in ${urls}
     do
         log "Checking URL '${url}'"
 
@@ -528,6 +536,9 @@ fetch_latest_apache_release() {
     else
         assert false
     fi
+
+    assert test -n "${release_version}"
+    assert test -f "${release_file}"
 }
 
 # func <backup-dir> <config-dir> <share-dir> <state-dir> [<bin-file>...]
@@ -536,9 +547,11 @@ save_backup() {
     local config_dir="$2"
     local share_dir="$3"
     local state_dir="$4"
-    local bin_file=
 
     shift 4
+
+    local bin_files="$*"
+    local bin_file=
 
     log "Saving the previous config dir"
 
@@ -564,7 +577,7 @@ save_backup() {
         mv "${state_dir}" "${backup_dir}/state"
     fi
 
-    for bin_file in "$@"
+    for bin_file in ${bin_files}
     do
         if [ -e "${bin_file}" ]
         then
