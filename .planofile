@@ -20,8 +20,8 @@ def test(app, shell="sh", verbose=False, debug=False):
         ENV["DEBUG"] = "1"
 
     try:
-        run(f"{shell} install.sh -y {'-v' if verbose else ''}".strip())
-        run(f"{shell} uninstall.sh -y {'-v' if verbose else ''}".strip())
+        run(f"{shell} install.sh {'-v' if verbose else ''}".strip())
+        run(f"{shell} uninstall.sh {'-v' if verbose else ''}".strip())
     finally:
         if debug:
             del ENV["DEBUG"]
@@ -41,15 +41,15 @@ def big_test(app, verbose=False, debug=False):
         test(app, shell=shell, verbose=verbose, debug=debug)
 
     with working_env():
-        run(f"sh uninstall.sh -y") # No existing installation
+        run(f"sh uninstall.sh") # No existing installation
 
-        run(f"sh install.sh -y") # No existing installation and no existing backup
-        run(f"sh install.sh -y") # Creates a backup
-        run(f"sh install.sh -y") # Backs up the backup
+        run(f"sh install.sh") # No existing installation and no existing backup
+        run(f"sh install.sh") # Creates a backup
+        run(f"sh install.sh") # Backs up the backup
 
-        run(f"sh uninstall.sh -y") # No existing backup
-        run(f"sh uninstall.sh -y") # Creates a backup
-        run(f"sh uninstall.sh -y") # Backs up the backup
+        run(f"sh uninstall.sh") # No existing backup
+        run(f"sh uninstall.sh") # Creates a backup
+        run(f"sh uninstall.sh") # Backs up the backup
 
 @command
 def lint(app):

@@ -608,8 +608,7 @@ generate_password() {
 }
 
 usage() {
-    local error
-    error="${1:-}"
+    local error="${1:-}"
 
     if [ -n "${error}" ]
     then
@@ -774,7 +773,7 @@ main() {
                                    "$(dirname "${artemis_home_dir}")" \
                                    "$(dirname "${artemis_instance_dir}")"
 
-        check_required_programs awk curl grep gzip java nc ps sed tar
+        check_required_programs awk curl gzip java nc ps sed tar
 
         check_required_program_sha512sum
 

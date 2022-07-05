@@ -47,5 +47,5 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: apt-get -qq update
-      - run: apt-get -qq install curl grep netcat python3 sudo openjdk-17-jre-headless
+      - run: apt-get -qq install curl netcat python3 sudo openjdk-17-jre-headless
       - run: ./plano big-test --verbose
