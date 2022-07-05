@@ -623,9 +623,9 @@ A script that installs ActiveMQ Artemis
 
 Options:
   -h            Print this help text and exit
+  -i            Operate in interactive mode
   -s <scheme>   Select an installation scheme (default "home")
   -v            Print detailed logging to the console
-  -y            Operate in non-interactive mode
 
 Installation schemes:
   home          Install to ~/.local and ~/.config
@@ -673,22 +673,22 @@ main() {
 
     local scheme="home"
     local verbose=
-    local interactive=1
+    local interactive=
 
-    while getopts :hs:vy option
+    while getopts :his:v option
     do
         case "${option}" in
             h)
                 usage
+                ;;
+            i)
+                interactive=1
                 ;;
             s)
                 scheme="${OPTARG}"
                 ;;
             v)
                 verbose=1
-                ;;
-            y)
-                interactive=
                 ;;
             *)
                 usage "Unknown option: ${OPTARG}"
