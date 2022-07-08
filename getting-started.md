@@ -6,7 +6,11 @@
 curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
 ~~~
 
-## Step 2: Install Qtools XXX
+## Step 2: Install the AMQP command-line tools
+
+~~~ shell
+curl -f https://raw.githubusercontent.com/ssorj/qtools/main/install.sh | sh
+~~~
 
 ## Step 3: Start the broker
 
