@@ -110,16 +110,16 @@ main() {
 
     case "${scheme}" in
         home)
-            artemis_bin_dir="${HOME}/.local/bin"
-            artemis_config_dir="${HOME}/.config/artemis"
-            artemis_home_dir="${HOME}/.local/share/artemis"
-            artemis_instance_dir="${HOME}/.local/state/artemis"
+            local artemis_bin_dir="${HOME}/.local/bin"
+            local artemis_config_dir="${HOME}/.config/artemis"
+            local artemis_home_dir="${HOME}/.local/share/artemis"
+            local artemis_instance_dir="${HOME}/.local/state/artemis"
             ;;
         opt)
-            artemis_bin_dir="/opt/artemis/bin"
-            artemis_config_dir="/etc/opt/artemis"
-            artemis_home_dir="/opt/artemis"
-            artemis_instance_dir="/var/opt/artemis"
+            local artemis_bin_dir="/opt/artemis/bin"
+            local artemis_config_dir="/etc/opt/artemis"
+            local artemis_home_dir="/opt/artemis"
+            local artemis_instance_dir="/var/opt/artemis"
             ;;
         *)
             usage "Unknown installation scheme: ${scheme}"
@@ -329,7 +329,7 @@ main() {
         print
         print "To uninstall Artemis, use:"
         print
-        print "    curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh"
+        print "    curl -f https://raw.githubusercontent.com/ssorj/persephone/main/uninstall.sh | sh"
         print
         print "To start the broker, use:"
         print

@@ -236,6 +236,14 @@ fail() {
 " "$(red "ERROR:")" "$1" >&3
     log "$(red "ERROR:") $1"
 
+    if [ -n "${2:-}" ]
+    then
+        printf "   See %s
+
+" "$2" >&3
+        log "See $2"
+    fi
+
     suppress_trouble_report=1
 
     exit 1
@@ -372,8 +380,8 @@ check_writable_directories() {
 
     if [ -n "${unwritable_dirs}" ]
     then
-        fail "Some directories are not writable: ${unwritable_dirs%??}"
-        # XXX Guidance
+        fail "Some install directories are not writable: ${unwritable_dirs%??}" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#some-install-directories-are-not-writable"
     fi
 }
 
@@ -397,8 +405,8 @@ check_required_programs() {
 
     if [ -n "${unavailable_programs}" ]
     then
-        fail "Some required programs are not available: ${unavailable_programs%??}"
-        # XXX Guidance - Use your OS's package manager to lookup and install things
+        fail "Some required programs are not available: ${unavailable_programs%??}" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#some-required-programs-are-not-available"
     fi
 }
 
@@ -407,7 +415,8 @@ check_required_program_sha512sum() {
 
     if ! command -v sha512sum && ! command -v shasum
     then
-        fail "Some required programs are not available: sha512sum or shasum"
+        fail "Some required programs are not available: sha512sum or shasum" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#some-required-programs-are-not-available"
     fi
 }
 
@@ -431,8 +440,8 @@ check_required_ports() {
 
     if [ -n "${unavailable_ports}" ]
     then
-        fail "Some required ports are in use by something else: ${unavailable_ports%??}"
-        # XXX Guidance - Use lsof or netstat to find out what's using these ports and terminate it
+        fail "Some required ports are in use by something else: ${unavailable_ports%??}" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#some-required-ports-are-in-use-by-something-else"
     fi
 }
 
@@ -458,8 +467,8 @@ check_required_network_resources() {
 
     if [ -n "${unavailable_urls}" ]
     then
-        fail "Some required network resources are not available: ${unavailable_urls%??}"
-        # XXX Guidance
+        fail "Some required network resources are not available: ${unavailable_urls%??}" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#some-required-network-resources-are-not-available"
     fi
 }
 
@@ -468,8 +477,8 @@ check_java() {
 
     if ! java --version
     then
-        fail "The program 'java' is available, but it isn't working"
-        # XXX Guidance - This seems to be a problem on Mac OS - Suggest Temurin via brew
+        fail "Java is available, but it is not working" \
+             "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#java-is-available-but-it-is-not-working"
     fi
 }
 
@@ -533,15 +542,15 @@ fetch_latest_apache_release() {
     then
         if ! run sha512sum -c "${release_file_checksum}"
         then
-            fail "The checksum does not match the downloaded release archive"
-            # XXX Guidance - Try blowing away the cached download
+            fail "The checksum does not match the downloaded release archive" \
+                 "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#the-checksum-does-not-match-the-downloaded-release-archive"
         fi
     elif command -v shasum
     then
         if ! run shasum -a 512 -c "${release_file_checksum}"
         then
-            fail "The checksum does not match the downloaded release archive"
-            # XXX Guidance - Try blowing away the cached download
+            fail "The checksum does not match the downloaded release archive" \
+                 "https://github.com/ssorj/persephone/blob/main/troubleshooting.md#the-checksum-does-not-match-the-downloaded-release-archive"
         fi
     else
         assert false
@@ -697,16 +706,16 @@ main() {
 
     case "${scheme}" in
         home)
-            artemis_bin_dir="${HOME}/.local/bin"
-            artemis_config_dir="${HOME}/.config/artemis"
-            artemis_home_dir="${HOME}/.local/share/artemis"
-            artemis_instance_dir="${HOME}/.local/state/artemis"
+            local artemis_bin_dir="${HOME}/.local/bin"
+            local artemis_config_dir="${HOME}/.config/artemis"
+            local artemis_home_dir="${HOME}/.local/share/artemis"
+            local artemis_instance_dir="${HOME}/.local/state/artemis"
             ;;
         opt)
-            artemis_bin_dir="/opt/artemis/bin"
-            artemis_config_dir="/etc/opt/artemis"
-            artemis_home_dir="/opt/artemis"
-            artemis_instance_dir="/var/opt/artemis"
+            local artemis_bin_dir="/opt/artemis/bin"
+            local artemis_config_dir="/etc/opt/artemis"
+            local artemis_home_dir="/opt/artemis"
+            local artemis_instance_dir="/var/opt/artemis"
             ;;
         *)
             usage "Unknown installation scheme: ${scheme}"
@@ -916,7 +925,7 @@ main() {
         print
         print "To uninstall Artemis, use:"
         print
-        print "    curl -f https://github.com/ssorj/persephone/blob/main/uninstall.sh | sh"
+        print "    curl -f https://raw.githubusercontent.com/ssorj/persephone/main/uninstall.sh | sh"
         print
         print "To start the broker, use:"
         print
