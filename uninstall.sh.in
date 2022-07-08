@@ -1,0 +1,182 @@
+#!/bin/sh
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+@burly@
+
+usage() {
+    local error="${1:-}"
+
+    if [ -n "${error}" ]
+    then
+        printf "%b %s\n\n" "$(red "ERROR:")" "${*}"
+    fi
+
+    cat <<EOF
+Usage: ${0} [-hvy] [-s <scheme>]
+
+A script that uninstalls ActiveMQ Artemis
+
+Options:
+  -h            Print this help text and exit
+  -i            Operate in interactive mode
+  -s <scheme>   Select the installation scheme (default "home")
+  -v            Print detailed logging to the console
+
+Installation schemes:
+  home          Install to ~/.local and ~/.config
+  opt           Install to /opt, /var/opt, and /etc/opt
+EOF
+
+    if [ -n "${error}" ]
+    then
+        exit 1
+    fi
+
+    exit 0
+}
+
+main() {
+    enable_strict_mode
+
+    if [ -n "${DEBUG:-}" ]
+    then
+        enable_debug_mode
+    fi
+
+    local scheme="home"
+    local verbose=
+    local interactive=
+
+    while getopts :his:v option
+    do
+        case "${option}" in
+            h)
+                usage
+                ;;
+            i)
+                interactive=1
+                ;;
+            s)
+                scheme="${OPTARG}"
+                ;;
+            v)
+                verbose=1
+                ;;
+            *)
+                usage "Unknown option: ${OPTARG}"
+                ;;
+        esac
+    done
+
+    case "${scheme}" in
+        home)
+            artemis_bin_dir="${HOME}/.local/bin"
+            artemis_config_dir="${HOME}/.config/artemis"
+            artemis_home_dir="${HOME}/.local/share/artemis"
+            artemis_instance_dir="${HOME}/.local/state/artemis"
+            ;;
+        opt)
+            artemis_bin_dir="/opt/artemis/bin"
+            artemis_config_dir="/etc/opt/artemis"
+            artemis_home_dir="/opt/artemis"
+            artemis_instance_dir="/var/opt/artemis"
+            ;;
+        *)
+            usage "Unknown installation scheme: ${scheme}"
+            ;;
+    esac
+
+    local work_dir="${HOME}/artemis-install-script"
+    local log_file="${work_dir}/uninstall.log"
+    local backup_dir="${work_dir}/backup"
+
+    mkdir -p "${work_dir}"
+    cd "${work_dir}"
+
+    init_logging "${log_file}" "${verbose}"
+
+    {
+        if [ -e "${backup_dir}" ]
+        then
+            mv "${backup_dir}" "${backup_dir}.$(date +%Y-%m-%d).$(random_number)"
+        fi
+
+        print_section "Checking prerequisites"
+
+        if [ ! -e "${artemis_config_dir}" ] && [ ! -e "${artemis_home_dir}" ] && [ ! -e "${artemis_instance_dir}" ]
+        then
+            fail "There is no existing installation to remove"
+        fi
+
+        check_writable_directories "${artemis_bin_dir}" \
+                                   "$(dirname "${artemis_config_dir}")" \
+                                   "$(dirname "${artemis_home_dir}")" \
+                                   "$(dirname "${artemis_instance_dir}")"
+
+        print_result "OK"
+
+        print_section "Saving the existing installation to a backup"
+
+        save_backup "${backup_dir}" \
+                    "${artemis_config_dir}" "${artemis_home_dir}" "${artemis_instance_dir}" \
+                    "${artemis_bin_dir}/artemis" "${artemis_bin_dir}/artemis-service"
+
+        print_result "OK"
+
+        print_section "Removing the existing installation"
+
+        if [ -e "${artemis_bin_dir}/artemis" ]; then
+            rm "${artemis_bin_dir}/artemis"
+        fi
+
+        if [ -e "${artemis_bin_dir}/artemis-service" ]; then
+            rm "${artemis_bin_dir}/artemis-service"
+        fi
+
+        if [ -e "${artemis_config_dir}" ]; then
+            rm -rf "${artemis_config_dir}"
+        fi
+
+        if [ -e "${artemis_home_dir}" ]; then
+            rm -rf "${artemis_home_dir}"
+        fi
+
+        if [ -e "${artemis_instance_dir}" ]; then
+            rm -rf "${artemis_instance_dir}"
+        fi
+
+        print_result "OK"
+
+        print_section "Summary"
+
+        print_result "SUCCESS"
+
+        print "ActiveMQ Artemis has been uninstalled."
+        print
+        print "    Backup:  ${backup_dir}"
+        print
+        print "To install Artemis again, use:"
+        print
+        print "    curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh"
+        print
+    } >&4 2>&4
+}
+
+main "$@"
