@@ -1,7 +1,8 @@
 # Persephone
 
 ~~~ shell
-curl -f https://raw.githubusercontent.com/ssorj/persephone/main/install.sh | sh
+curl -f https://raw.githubusercontent.com/ssorj/persephone/main/artemis/install.sh | sh
+curl -f https://raw.githubusercontent.com/ssorj/persephone/main/qtools/install.sh | sh
 ~~~
 
 ## Topics

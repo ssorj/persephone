@@ -3,16 +3,17 @@ CYGWIN = call("uname").startswith("CYGWIN")
 
 @command
 def build(app):
-    burly = read("burly.sh").strip()
+    with working_dir("artemis"):
+        burly = read("burly.sh").strip()
 
-    install_sh_in = read("install.sh.in")
-    install_sh = replace(install_sh_in, "@burly@", burly)
+        install_sh_in = read("install.sh.in")
+        install_sh = replace(install_sh_in, "@burly@", burly)
 
-    uninstall_sh_in = read("uninstall.sh.in")
-    uninstall_sh = replace(uninstall_sh_in, "@burly@", burly)
+        uninstall_sh_in = read("uninstall.sh.in")
+        uninstall_sh = replace(uninstall_sh_in, "@burly@", burly)
 
-    write("install.sh", install_sh)
-    write("uninstall.sh", uninstall_sh)
+        write("install.sh", install_sh)
+        write("uninstall.sh", uninstall_sh)
 
 @command
 def test(app, shell="sh", verbose=False, debug=False):
@@ -25,8 +26,9 @@ def test(app, shell="sh", verbose=False, debug=False):
         ENV["DEBUG"] = "1"
 
     try:
-        run(f"{shell} install.sh {'-v' if verbose else ''}".strip())
-        run(f"{shell} uninstall.sh {'-v' if verbose else ''}".strip())
+        with working_dir("artemis"):
+            run(f"{shell} install.sh {'-v' if verbose else ''}".strip())
+            run(f"{shell} uninstall.sh {'-v' if verbose else ''}".strip())
     finally:
         if debug:
             del ENV["DEBUG"]
@@ -46,11 +48,12 @@ def big_test(app, verbose=False, debug=False):
         test(app, shell=shell, verbose=verbose, debug=debug)
 
     with working_env():
-        run(f"sh install.sh") # No existing installation and no existing backup
-        run(f"sh install.sh") # Creates a backup
-        run(f"sh install.sh") # Backs up the backup
+        with working_dir("artemis"):
+            run(f"sh install.sh") # No existing installation and no existing backup
+            run(f"sh install.sh") # Creates a backup
+            run(f"sh install.sh") # Backs up the backup
 
-        run(f"sh uninstall.sh")
+            run(f"sh uninstall.sh")
 
 @command
 def lint(app):
@@ -58,8 +61,5 @@ def lint(app):
 
     build(app)
 
-    run("shellcheck --enable all --exclude SC3043 install.sh uninstall.sh")
-
-@command
-def clean(app):
-    remove(join(get_home_dir(), ".cache", "artemis-install-script"))
+    with working_dir("artemis"):
+        run("shellcheck --enable all --exclude SC3043 install.sh uninstall.sh")
